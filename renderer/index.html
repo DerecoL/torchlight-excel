@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>P4 Excel 快捷启动器</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Toast 通知 -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- 顶部栏 -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="app-title">P4 Excel 启动器</div>
+      <div class="p4-status" id="p4Status">
+        <span class="status-dot disconnected" id="statusDot"></span>
+        <span id="statusText">检测中...</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <label class="stream-label">工作区:</label>
+      <select id="streamSelect" class="stream-select" disabled>
+        <option value="">加载中...</option>
+      </select>
+      <button class="btn btn-icon btn-star" id="btnStarStream" title="收藏/取消收藏当前工作区">☆</button>
+      <button class="btn btn-icon" id="btnRefreshStreams" title="刷新工作区列表">⟳</button>
+      <button class="btn" id="btnAutoConfig" title="打开自动配表工作台">自动配表</button>
+      <button class="btn btn-icon" id="btnSettings" title="P4 设置">⚙</button>
+    </div>
+  </header>
+
+  <!-- 主体 -->
+  <div class="main-container">
+    <!-- 左侧 - 收藏分组 -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">收藏分组</span>
+        <div class="sidebar-header-actions">
+          <button class="btn btn-sm" id="btnImportGroups" title="导入分组配置">↓</button>
+          <button class="btn btn-sm" id="btnExportGroups" title="导出分组配置">↑</button>
+          <button class="btn btn-sm" id="btnAddGroup" title="新建分组">+</button>
+        </div>
+      </div>
+      <ul class="group-list" id="groupList"></ul>
+    </aside>
+
+    <!-- 主区域 - 文件列表 -->
+    <main class="content">
+      <div class="content-header">
+        <h2 class="group-title" id="currentGroupTitle">选择一个分组</h2>
+        <div class="content-actions">
+          <button class="btn" id="btnBatchImport" disabled>批量导入文件夹</button>
+          <button class="btn btn-primary" id="btnAddFile" disabled>+ 添加文件</button>
+        </div>
+      </div>
+      <div class="file-list" id="fileList">
+        <div class="empty-state">
+          <div class="empty-icon">📂</div>
+          <p>选择左侧分组查看文件，或创建一个新分组开始使用</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 自动配表工作台 -->
+  <div class="auto-config-shell hidden" id="autoConfigShell">
+    <aside class="auto-sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">自动配表模板</span>
+        <div class="sidebar-header-actions">
+          <button class="btn btn-sm" id="btnImportTemplate" title="导入模板">↙</button>
+          <button class="btn btn-sm" id="btnExportTemplate" title="导出模板">↗</button>
+          <button class="btn btn-sm" id="btnNewTemplate" title="新建模板">+</button>
+        </div>
+      </div>
+      <ul class="group-list" id="templateList"></ul>
+      <button class="btn auto-back-btn" id="btnBackToFavorites">返回收藏夹</button>
+    </aside>
+    <main class="auto-content">
+      <div class="content-header">
+        <h2 class="group-title">自动配表</h2>
+        <div class="content-actions auto-tabs">
+          <button class="btn btn-primary" id="btnTemplateTab">模板管理</button>
+          <button class="btn" id="btnRunTab">执行配表</button>
+        </div>
+      </div>
+
+      <section class="auto-panel" id="templatePanel">
+        <div class="auto-form-grid">
+          <div class="form-group">
+            <label>模板名称（备注名）</label>
+            <input type="text" id="templateNameInput" class="input" placeholder="例如：怪物基础配置">
+          </div>
+          <div class="form-group">
+            <label>模板 ID</label>
+            <input type="text" id="templateIdInput" class="input" placeholder="例如：monster-basic">
+          </div>
+        </div>
+        <div class="auto-actions auto-sync-actions">
+          <button class="btn" id="btnVisualToJson">从可视化生成 JSON</button>
+          <button class="btn" id="btnJsonToVisual">从 JSON 渲染可视化</button>
+        </div>
+        <div class="visual-template-editor" id="visualTemplateEditor">
+          <div class="visual-section">
+            <div class="visual-section-header">
+              <h3>输入字段</h3>
+              <button class="btn btn-sm" id="btnAddVisualInput">+</button>
+            </div>
+            <div id="visualInputsList"></div>
+          </div>
+          <div class="visual-section">
+            <div class="visual-section-header">
+              <h3>ID 序列</h3>
+              <button class="btn btn-sm" id="btnAddVisualId">+</button>
+            </div>
+            <div id="visualIdsList"></div>
+          </div>
+          <div class="visual-section">
+            <div class="visual-section-header">
+              <h3>目标表与行规则</h3>
+              <button class="btn btn-sm" id="btnAddVisualTable">+</button>
+            </div>
+            <div id="visualTablesList"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>输入字段 JSON</label>
+          <textarea id="templateInputsText" class="input auto-textarea" spellcheck="false"></textarea>
+        </div>
+        <div class="form-group">
+          <label>ID 序列 JSON</label>
+          <textarea id="templateIdsText" class="input auto-textarea small" spellcheck="false"></textarea>
+        </div>
+        <div class="form-group">
+          <label>目标表与行规则 JSON</label>
+          <textarea id="templateTablesText" class="input auto-textarea large" spellcheck="false"></textarea>
+        </div>
+        <div class="auto-actions">
+          <button class="btn btn-danger" id="btnDeleteTemplate">删除模板</button>
+          <button class="btn btn-primary" id="btnSaveTemplate">保存模板</button>
+        </div>
+      </section>
+
+      <section class="auto-panel hidden" id="runPanel">
+        <div class="auto-form-grid">
+          <div class="form-group">
+            <label>选择模板</label>
+            <select id="runTemplateSelect" class="input"></select>
+          </div>
+          <div class="form-group">
+            <label>执行 JSON</label>
+            <div class="browse-row">
+              <input type="text" id="runJsonStatus" class="input" readonly placeholder="可粘贴 JSON 后点击载入">
+              <button class="btn" id="btnLoadRunJson">载入 JSON</button>
+              <button class="btn" id="btnDumpRunJson">界面转 JSON</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <textarea id="runJsonText" class="input auto-textarea" spellcheck="false" placeholder='{"templateId":"","inputs":{},"idStarts":{}}'></textarea>
+        </div>
+        <div class="auto-run-layout">
+          <div>
+            <div class="auto-section-title-row">
+              <h3 class="auto-section-title">数据行</h3>
+              <button class="btn btn-sm" id="btnAddRunItem">+ 新增行</button>
+            </div>
+            <div id="runInputFields" class="auto-field-list hidden"></div>
+            <div id="runItemsTable" class="run-items-table"></div>
+          </div>
+          <div>
+            <h3 class="auto-section-title">ID 起始值</h3>
+            <div id="runIdFields" class="auto-field-list"></div>
+          </div>
+        </div>
+        <div class="auto-actions">
+          <button class="btn" id="btnPreviewAutoConfig">生成预览</button>
+          <button class="btn btn-primary" id="btnExecuteAutoConfig">确认写入</button>
+        </div>
+        <pre class="diag-output auto-preview" id="autoPreviewOutput"></pre>
+      </section>
+    </main>
+  </div>
+
+  <!-- 添加分组对话框 -->
+  <div class="modal-overlay hidden" id="modalAddGroup">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>新建分组</h3>
+        <button class="btn btn-icon modal-close" data-close="modalAddGroup">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>分组名称</label>
+        <input type="text" id="inputGroupName" class="input" placeholder="例如：怪物配置" autofocus>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" data-close="modalAddGroup">取消</button>
+        <button class="btn btn-primary" id="btnConfirmAddGroup">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 添加文件对话框 -->
+  <div class="modal-overlay hidden" id="modalAddFile">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>添加文件到收藏</h3>
+        <button class="btn btn-icon modal-close" data-close="modalAddFile">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>添加方式</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="addFileMode" value="manual" checked> 手动输入相对路径
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="addFileMode" value="browse"> 浏览本地文件
+            </label>
+          </div>
+        </div>
+        <div class="form-group" id="manualPathGroup">
+          <label>文件相对路径（相对于 Stream 根目录）</label>
+          <input type="text" id="inputFilePath" class="input" placeholder="例如：Design/Tables/Monster.xlsx">
+        </div>
+        <div class="form-group hidden" id="browsePathGroup">
+          <label>选择本地文件</label>
+          <div class="browse-row">
+            <input type="text" id="inputBrowsePath" class="input" readonly placeholder="点击浏览选择文件">
+            <button class="btn" id="btnBrowseFile">浏览</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>显示别名（可选）</label>
+          <input type="text" id="inputFileAlias" class="input" placeholder="例如：怪物属性表">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" data-close="modalAddFile">取消</button>
+        <button class="btn btn-primary" id="btnConfirmAddFile">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- P4 设置对话框 -->
+  <div class="modal-overlay hidden" id="modalSettings">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h3>P4 连接设置</h3>
+        <button class="btn btn-icon modal-close" data-close="modalSettings">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="settings-tip">
+          以下信息可在 P4V 的 <strong>Connection &gt; Environment Settings</strong> 中查看，
+          或点击下方「自动检测」从系统环境读取。
+        </div>
+        <div class="settings-actions-row">
+          <button class="btn" id="btnDetectP4">🔍 自动检测</button>
+          <button class="btn" id="btnTestConnection">🔗 测试连接</button>
+        </div>
+        <div class="form-group">
+          <label>P4 Server (P4PORT) <span class="label-hint">— P4V 左上角显示的服务器地址</span></label>
+          <input type="text" id="settingPort" class="input" placeholder="例如：ssl:perforce:1666 或 perforce:1666">
+        </div>
+        <div class="form-group">
+          <label>用户名 (P4USER) <span class="label-hint">— 你的 P4 登录账号</span></label>
+          <input type="text" id="settingUser" class="input" placeholder="例如：zhangsan">
+        </div>
+        <div class="form-group">
+          <label>默认工作区 (P4CLIENT) <span class="label-hint">— 可留空，保存后通过顶部下拉框选择</span></label>
+          <input type="text" id="settingClient" class="input" placeholder="可留空，会自动列出你的所有工作区">
+        </div>
+        <div class="form-group">
+          <label>Depot 路径前缀 <span class="label-hint">— Streams 所在的仓库根路径</span></label>
+          <input type="text" id="settingDepot" class="input" placeholder="例如：//depot 或 //GameProject">
+        </div>
+        <div class="form-group hidden" id="diagOutputGroup">
+          <label>诊断信息</label>
+          <pre class="diag-output" id="diagOutput"></pre>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" data-close="modalSettings">取消</button>
+        <button class="btn btn-primary" id="btnSaveSettings">保存并连接</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 重命名分组对话框 -->
+  <div class="modal-overlay hidden" id="modalRenameGroup">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>重命名分组</h3>
+        <button class="btn btn-icon modal-close" data-close="modalRenameGroup">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>分组名称</label>
+        <input type="text" id="inputRenameGroup" class="input">
+      </div>
+      <div class="modal-footer">
+        <button class="btn" data-close="modalRenameGroup">取消</button>
+        <button class="btn btn-primary" id="btnConfirmRenameGroup">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 批量导入确认对话框 -->
+  <div class="modal-overlay hidden" id="modalBatchImport">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h3>批量导入文件</h3>
+        <button class="btn btn-icon modal-close" data-close="modalBatchImport">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="batch-info" id="batchInfo"></div>
+        <div class="batch-file-list" id="batchFileList"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" data-close="modalBatchImport">取消</button>
+        <button class="btn btn-primary" id="btnConfirmBatchImport">全部添加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 导入分组确认对话框 -->
+  <div class="modal-overlay hidden" id="modalImportConfirm">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>导入分组配置</h3>
+        <button class="btn btn-icon modal-close" data-close="modalImportConfirm">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="importPreviewText"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" data-close="modalImportConfirm">取消</button>
+        <button class="btn" id="btnImportReplace">替换现有</button>
+        <button class="btn btn-primary" id="btnImportMerge">合并追加</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="file-drag-sort.js"></script>
+  <script src="template-visual-utils.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

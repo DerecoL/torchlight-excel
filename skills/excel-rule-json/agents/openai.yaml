@@ -1,0 +1,7 @@
+interface:
+  display_name: "Excel 规则 JSON"
+  short_description: "把自然语言规则转换为可导入的自动配表 JSON"
+  default_prompt: "Use $excel-rule-json to convert my Chinese rule description into importable Excel auto-config JSON."
+
+policy:
+  allow_implicit_invocation: true

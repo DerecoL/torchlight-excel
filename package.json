@@ -1,0 +1,66 @@
+{
+  "name": "p4-excel-launcher",
+  "version": "1.0.0",
+  "description": "P4 Excel 快捷启动器 - 策划常用表格管理工具",
+  "main": "main.js",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --win",
+    "build:portable": "electron-builder --win portable",
+    "build:dir": "electron-builder --win dir"
+  },
+  "author": "",
+  "license": "MIT",
+  "build": {
+    "appId": "com.team.p4-excel-launcher",
+    "productName": "P4 Excel 启动器",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "lib/**/*",
+      "renderer/**/*",
+      "team-config.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "shortcutName": "P4 Excel 启动器",
+      "installerLanguages": [
+        "zh_CN"
+      ],
+      "language": "2052"
+    },
+    "portable": {
+      "artifactName": "P4-Excel-启动器-便携版.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^41.1.0",
+    "electron-builder": "^26.8.1"
+  },
+  "dependencies": {
+    "xlsx-populate": "^1.21.0"
+  }
+}
