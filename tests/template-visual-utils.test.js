@@ -155,3 +155,65 @@ test('normalizeTemplate maps same-key inputs when a row only has the primary key
     note: { type: 'input', key: 'note' },
   });
 });
+
+test('extractTemplateFromImport reads the first template from a full export document', () => {
+  const { extractTemplateFromImport } = loadUtils();
+
+  const output = extractTemplateFromImport({
+    version: 1,
+    exportedAt: '2026-05-27T00:00:00.000Z',
+    templates: [
+      {
+        id: 'monster-basic',
+        name: '怪物基础配置',
+        inputs: [{ key: 'kind', label: '类型', type: 'select', options: 'monster,boss' }],
+        idSequences: [{ key: 'monsterId', label: '怪物ID' }],
+        tables: [],
+      },
+    ],
+  });
+
+  assert.equal(output.id, 'monster-basic');
+  assert.equal(output.name, '怪物基础配置');
+  assert.deepEqual(output.inputs[0].options, ['monster', 'boss']);
+});
+
+test('extractTemplateFromImport selects a matching template id from a full export document', () => {
+  const { extractTemplateFromImport } = loadUtils();
+
+  const output = extractTemplateFromImport({
+    version: 1,
+    templates: [
+      { id: 'monster-basic', name: '怪物基础配置', inputs: [], idSequences: [], tables: [] },
+      { id: 'npc-basic', name: 'NPC 基础配置', inputs: [{ key: 'name', label: '名称' }], tables: [] },
+    ],
+  }, 'npc-basic');
+
+  assert.equal(output.id, 'npc-basic');
+  assert.equal(output.name, 'NPC 基础配置');
+  assert.deepEqual(output.inputs, [{ key: 'name', label: '名称', type: 'text', options: [] }]);
+});
+
+test('extractTemplateFromImport accepts a single template object', () => {
+  const { extractTemplateFromImport } = loadUtils();
+
+  const output = extractTemplateFromImport({
+    id: 'single-template',
+    name: '单模板',
+    inputs: [],
+    idSequences: [],
+    tables: [],
+  });
+
+  assert.equal(output.id, 'single-template');
+  assert.equal(output.name, '单模板');
+});
+
+test('extractTemplateFromImport rejects documents without templates', () => {
+  const { extractTemplateFromImport } = loadUtils();
+
+  assert.throws(
+    () => extractTemplateFromImport({ version: 1, templates: [] }),
+    /没有找到模板/
+  );
+});

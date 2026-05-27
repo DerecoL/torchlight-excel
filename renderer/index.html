@@ -99,7 +99,12 @@
             <input type="text" id="templateIdInput" class="input" placeholder="例如：monster-basic">
           </div>
         </div>
+        <div class="form-group">
+          <label>完整模板 JSON</label>
+          <textarea id="templateFullJsonText" class="input auto-textarea full-template-textarea" spellcheck="false" placeholder='可粘贴 {"version":1,"templates":[...]} 或单个 template 对象'></textarea>
+        </div>
         <div class="auto-actions auto-sync-actions">
+          <button class="btn" id="btnFullJsonToEditor">解析完整 JSON</button>
           <button class="btn" id="btnVisualToJson">从可视化生成 JSON</button>
           <button class="btn" id="btnJsonToVisual">从 JSON 渲染可视化</button>
         </div>

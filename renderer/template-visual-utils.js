@@ -102,12 +102,47 @@
     };
   }
 
+  function templateListFromImport(data) {
+    if (Array.isArray(data)) return data;
+    if (!data || typeof data !== 'object') return [];
+    if (Array.isArray(data.templates)) return data.templates;
+    if (data.template && typeof data.template === 'object') return [data.template];
+    if (
+      Object.prototype.hasOwnProperty.call(data, 'id') ||
+      Object.prototype.hasOwnProperty.call(data, 'name') ||
+      Object.prototype.hasOwnProperty.call(data, 'inputs') ||
+      Object.prototype.hasOwnProperty.call(data, 'idSequences') ||
+      Object.prototype.hasOwnProperty.call(data, 'tables')
+    ) {
+      return [data];
+    }
+    return [];
+  }
+
+  function extractTemplateFromImport(data, preferredTemplateId = '') {
+    const templates = templateListFromImport(data).filter(template => template && typeof template === 'object');
+    if (templates.length === 0) {
+      throw new Error('完整模板 JSON 中没有找到模板');
+    }
+
+    const preferredId = String(preferredTemplateId || '').trim();
+    const selected = preferredId
+      ? templates.find(template => template.id === preferredId)
+      : templates[0];
+    if (!selected) {
+      throw new Error(`完整模板 JSON 中没有找到模板 ID: ${preferredId}`);
+    }
+
+    return normalizeTemplate(selected);
+  }
+
   function cloneTemplate(template) {
     return normalizeTemplate(JSON.parse(JSON.stringify(template || {})));
   }
 
   return {
     normalizeTemplate,
+    extractTemplateFromImport,
     cloneTemplate,
   };
 });

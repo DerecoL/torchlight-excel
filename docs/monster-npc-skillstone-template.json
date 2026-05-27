@@ -1,0 +1,209 @@
+{
+  "version": 1,
+  "exportedAt": "2026-05-27T00:00:00.000Z",
+  "templates": [
+    {
+      "id": "monster-npc-skillstone",
+      "name": "怪物 NPC 配置模板",
+      "inputs": [
+        {
+          "key": "skill_ids_pipe",
+          "label": "NPC.skill 技能ID列表（用|分割）",
+          "type": "text",
+          "options": []
+        },
+        {
+          "key": "skill1_id",
+          "label": "技能1 skillstone.id",
+          "type": "number",
+          "options": []
+        },
+        {
+          "key": "has_skill_2",
+          "label": "是否配置技能2",
+          "type": "boolean",
+          "options": []
+        },
+        {
+          "key": "skill2_id",
+          "label": "技能2 skillstone.id",
+          "type": "number",
+          "options": []
+        },
+        {
+          "key": "has_skill_3",
+          "label": "是否配置技能3",
+          "type": "boolean",
+          "options": []
+        },
+        {
+          "key": "skill3_id",
+          "label": "技能3 skillstone.id",
+          "type": "number",
+          "options": []
+        },
+        {
+          "key": "has_skill_4",
+          "label": "是否配置技能4",
+          "type": "boolean",
+          "options": []
+        },
+        {
+          "key": "skill4_id",
+          "label": "技能4 skillstone.id",
+          "type": "number",
+          "options": []
+        },
+        {
+          "key": "has_skill_5",
+          "label": "是否配置技能5",
+          "type": "boolean",
+          "options": []
+        },
+        {
+          "key": "skill5_id",
+          "label": "技能5 skillstone.id",
+          "type": "number",
+          "options": []
+        }
+      ],
+      "idSequences": [
+        {
+          "key": "npcId",
+          "label": "npc.id"
+        },
+        {
+          "key": "npcAttrId",
+          "label": "npcattr.id"
+        }
+      ],
+      "tables": [
+        {
+          "key": "npcattr",
+          "relativePath": "Design/Tables/npcattr.xlsx",
+          "sheetName": "npcattr",
+          "headerRow": 1,
+          "primaryKey": "id",
+          "copyRow": 2,
+          "rows": [
+            {
+              "key": "npcAttrMain",
+              "condition": null,
+              "fields": {
+                "id": {
+                  "type": "id",
+                  "sequence": "npcAttrId"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "key": "skillstone",
+          "relativePath": "Design/Tables/skillstone.xlsx",
+          "sheetName": "skillstone",
+          "headerRow": 1,
+          "primaryKey": "id",
+          "copyRow": 2,
+          "rows": [
+            {
+              "key": "skillstone1",
+              "condition": null,
+              "fields": {
+                "id": {
+                  "type": "input",
+                  "key": "skill1_id"
+                }
+              }
+            },
+            {
+              "key": "skillstone2",
+              "condition": {
+                "input": "has_skill_2",
+                "op": "equals",
+                "value": true
+              },
+              "fields": {
+                "id": {
+                  "type": "input",
+                  "key": "skill2_id"
+                }
+              }
+            },
+            {
+              "key": "skillstone3",
+              "condition": {
+                "input": "has_skill_3",
+                "op": "equals",
+                "value": true
+              },
+              "fields": {
+                "id": {
+                  "type": "input",
+                  "key": "skill3_id"
+                }
+              }
+            },
+            {
+              "key": "skillstone4",
+              "condition": {
+                "input": "has_skill_4",
+                "op": "equals",
+                "value": true
+              },
+              "fields": {
+                "id": {
+                  "type": "input",
+                  "key": "skill4_id"
+                }
+              }
+            },
+            {
+              "key": "skillstone5",
+              "condition": {
+                "input": "has_skill_5",
+                "op": "equals",
+                "value": true
+              },
+              "fields": {
+                "id": {
+                  "type": "input",
+                  "key": "skill5_id"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "key": "npc",
+          "relativePath": "Design/Tables/npc.xlsx",
+          "sheetName": "npc",
+          "headerRow": 1,
+          "primaryKey": "id",
+          "copyRow": 2,
+          "rows": [
+            {
+              "key": "npcMain",
+              "condition": null,
+              "fields": {
+                "id": {
+                  "type": "id",
+                  "sequence": "npcId"
+                },
+                "skill": {
+                  "type": "input",
+                  "key": "skill_ids_pipe"
+                },
+                "npc_attr_id": {
+                  "type": "ref",
+                  "row": "npcAttrMain",
+                  "field": "id"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

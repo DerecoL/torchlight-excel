@@ -410,6 +410,10 @@ body {
   min-height: 240px;
 }
 
+.auto-textarea.full-template-textarea {
+  min-height: 150px;
+}
+
 .auto-actions {
   display: flex;
   justify-content: flex-end;

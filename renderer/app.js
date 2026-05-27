@@ -40,9 +40,11 @@
   const $runPanel = document.getElementById('runPanel');
   const $templateNameInput = document.getElementById('templateNameInput');
   const $templateIdInput = document.getElementById('templateIdInput');
+  const $templateFullJsonText = document.getElementById('templateFullJsonText');
   const $templateInputsText = document.getElementById('templateInputsText');
   const $templateIdsText = document.getElementById('templateIdsText');
   const $templateTablesText = document.getElementById('templateTablesText');
+  const $btnFullJsonToEditor = document.getElementById('btnFullJsonToEditor');
   const $btnVisualToJson = document.getElementById('btnVisualToJson');
   const $btnJsonToVisual = document.getElementById('btnJsonToVisual');
   const $visualInputsList = document.getElementById('visualInputsList');
@@ -1152,6 +1154,34 @@
     return window.templateVisualUtils.normalizeTemplate(template);
   }
 
+  function applyTemplateToEditor(template) {
+    const normalized = normalizeTemplate(template);
+    $templateNameInput.value = normalized.name || '';
+    $templateIdInput.value = normalized.id || '';
+    $templateInputsText.value = formatJson(normalized.inputs);
+    $templateIdsText.value = formatJson(normalized.idSequences);
+    $templateTablesText.value = formatJson(normalized.tables);
+    renderVisualTemplateEditor(normalized);
+    return normalized;
+  }
+
+  function syncEditorFromFullJson() {
+    const data = parseJsonText($templateFullJsonText.value, null, '完整模板');
+    let template;
+    try {
+      template = window.templateVisualUtils.extractTemplateFromImport(data, $templateIdInput.value.trim());
+    } catch (e) {
+      if (!/没有找到模板 ID/.test(e.message)) throw e;
+      template = window.templateVisualUtils.extractTemplateFromImport(data);
+    }
+
+    const normalized = applyTemplateToEditor(template);
+    activeAutoTemplateId = normalized.id || activeAutoTemplateId;
+    renderAutoTemplateList();
+    renderRunTemplateSelect();
+    return normalized;
+  }
+
   function optionTags(values, selected) {
     return values.map(value => {
       const isSelected = value === selected ? ' selected' : '';
@@ -1429,6 +1459,7 @@
 
   function renderSelectedTemplateEditor() {
     const template = selectedAutoTemplate();
+    $templateFullJsonText.value = '';
     if (!template) {
       $templateNameInput.value = '';
       $templateIdInput.value = '';
@@ -1440,13 +1471,7 @@
       return;
     }
 
-    const normalized = normalizeTemplate(template);
-    $templateNameInput.value = normalized.name || '';
-    $templateIdInput.value = normalized.id || '';
-    $templateInputsText.value = formatJson(normalized.inputs);
-    $templateIdsText.value = formatJson(normalized.idSequences);
-    $templateTablesText.value = formatJson(normalized.tables);
-    renderVisualTemplateEditor(normalized);
+    applyTemplateToEditor(template);
   }
 
   async function saveTemplateFromEditor() {
@@ -1702,6 +1727,14 @@
   });
 
   $btnSaveTemplate.addEventListener('click', saveTemplateFromEditor);
+  $btnFullJsonToEditor.addEventListener('click', () => {
+    try {
+      const template = syncEditorFromFullJson();
+      showToast(`已解析完整 JSON: ${template.name || template.id}`, 'success');
+    } catch (e) {
+      showToast(e.message, 'error', 6000);
+    }
+  });
   $btnVisualToJson.addEventListener('click', () => {
     syncJsonFromVisual();
     showToast('已从可视化生成 JSON', 'success');
