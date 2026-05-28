@@ -348,8 +348,75 @@
     </div>
   </div>
 
+  <!-- 快速修改 Excel -->
+  <div class="modal-overlay hidden" id="modalQuickEdit">
+    <div class="modal modal-xl">
+      <div class="modal-header">
+        <h3>按 ID 快速修改</h3>
+        <button class="btn btn-icon modal-close" data-close="modalQuickEdit">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Excel 文件</label>
+          <input type="text" id="quickEditPath" class="input" readonly>
+        </div>
+        <div class="auto-form-grid">
+          <div class="form-group">
+            <label>修改模板</label>
+            <select id="quickEditTemplateSelect" class="input"></select>
+          </div>
+          <div class="form-group">
+            <label>模板名称</label>
+            <input type="text" id="quickEditTemplateName" class="input" placeholder="例如：NPC 常用字段">
+          </div>
+        </div>
+        <div class="auto-form-grid quick-edit-grid">
+          <div class="form-group">
+            <label>Sheet</label>
+            <input type="text" id="quickEditSheetName" class="input" value="data">
+          </div>
+          <div class="form-group">
+            <label>表头行</label>
+            <input type="number" id="quickEditHeaderRow" class="input" value="2" min="1">
+          </div>
+          <div class="form-group">
+            <label>主键列</label>
+            <input type="text" id="quickEditPrimaryKey" class="input" value="id">
+          </div>
+          <div class="form-group">
+            <label>主键值</label>
+            <input type="text" id="quickEditPrimaryValue" class="input" placeholder="输入要修改的 ID">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>常用字段（可选，用英文逗号分隔；留空显示全部字段）</label>
+          <input type="text" id="quickEditFields" class="input" placeholder="例如：name,level,skill">
+        </div>
+        <div class="form-group">
+          <label>快速修改 JSON</label>
+          <textarea id="quickEditJsonText" class="input auto-textarea small" spellcheck="false" placeholder='{"relativePath":"design/demo_table/npc.xlsx","sheetName":"data","headerRow":2,"primaryKey":"id","primaryValue":"1001","values":{"name":"Slime"}}'></textarea>
+        </div>
+        <div class="auto-actions auto-sync-actions">
+          <button class="btn" id="btnQuickEditLoadJson">导入 JSON</button>
+          <button class="btn" id="btnQuickEditDumpJson">界面转 JSON</button>
+          <button class="btn" id="btnQuickEditSaveTemplate">保存模板</button>
+          <button class="btn" id="btnQuickEditDeleteTemplate">删除模板</button>
+          <button class="btn btn-primary" id="btnQuickEditLoadRow">读取行</button>
+        </div>
+        <div id="quickEditFieldsList" class="quick-edit-fields"></div>
+        <pre class="diag-output auto-preview quick-edit-preview" id="quickEditPreview"></pre>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" data-close="modalQuickEdit">取消</button>
+        <button class="btn" id="btnQuickEditPreview">预览变更</button>
+        <button class="btn btn-primary" id="btnQuickEditExecute">确认写入</button>
+      </div>
+    </div>
+  </div>
+
   <script src="file-drag-sort.js"></script>
   <script src="template-visual-utils.js"></script>
+  <script src="quick-edit-json.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

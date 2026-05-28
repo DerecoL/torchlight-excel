@@ -617,3 +617,90 @@ test('buildAutoConfigPlan auto-generates blank skillstone ids and writes them in
   assert.equal(plan.changes.find(change => change.rowKey === 'skillstone2').values.id, 2002);
   assert.equal(plan.changes.find(change => change.rowKey === 'npcMain').values.skill, '2001|2002');
 });
+
+test('buildAutoConfigPlan generates repeated rows from array input and joins generated ids', async () => {
+  const plan = await buildAutoConfigPlan({
+    template: {
+      id: 'npc-skill-array',
+      name: 'NPC skill array',
+      inputs: [
+        {
+          key: 'skills',
+          label: '技能配置',
+          type: 'array',
+          fields: [
+            { key: 'skill_stone_id', label: '技能石 ID', type: 'number' },
+            { key: 'skill_stone_type', label: '技能石类型', type: 'number' },
+            { key: 'skill_id', label: '技能行为 ID', type: 'number' },
+          ],
+        },
+      ],
+      idSequences: [
+        { key: 'npcId', label: 'npc.id' },
+        { key: 'skillStoneId', label: 'skill_stone.id' },
+      ],
+      tables: [
+        {
+          key: 'skill_stone',
+          relativePath: 'design/demo_table/skill_stone.xlsx',
+          sheetName: 'data',
+          headerRow: 2,
+          primaryKey: 'id',
+          rows: [
+            {
+              key: 'skillStone',
+              forEach: { input: 'skills', as: 'skill' },
+              fields: {
+                id: { type: 'inputOrId', key: 'skill.skill_stone_id', sequence: 'skillStoneId' },
+                type: { type: 'input', key: 'skill.skill_stone_type' },
+                skill_id: { type: 'input', key: 'skill.skill_id' },
+              },
+            },
+          ],
+        },
+        {
+          key: 'npc',
+          relativePath: 'design/demo_table/npc.xlsx',
+          sheetName: 'data',
+          headerRow: 2,
+          primaryKey: 'id',
+          rows: [
+            {
+              key: 'npcMain',
+              fields: {
+                id: { type: 'id', sequence: 'npcId' },
+                skill: { type: 'refJoin', row: 'skillStone', field: 'id', separator: '|' },
+              },
+            },
+          ],
+        },
+      ],
+    },
+    runRequest: {
+      templateId: 'npc-skill-array',
+      inputs: {
+        skills: [
+          { skill_stone_id: '', skill_stone_type: 1, skill_id: 3001 },
+          { skill_stone_id: 2100, skill_stone_type: 2, skill_id: 3002 },
+        ],
+      },
+      idStarts: { npcId: 10000001 },
+    },
+    tableReader: async (table) => ({
+      headers: table.key === 'skill_stone' ? ['id', 'type', 'skill_id'] : ['id', 'skill'],
+      existingRows: table.key === 'skill_stone'
+        ? [{ rowNumber: 2, values: { id: 2000, type: 1, skill_id: 1000 } }]
+        : [],
+      nextRowNumber: table.key === 'skill_stone' ? 3 : 3,
+      columnValues: table.key === 'skill_stone' ? { id: [2000] } : {},
+    }),
+    resolveLocalPath: async relativePath => `C:/ws/${relativePath}`,
+  });
+
+  assert.equal(plan.ok, true);
+  assert.equal(plan.errors.length, 0);
+  assert.equal(plan.warnings.length, 0);
+  assert.equal(plan.changes.filter(change => change.rowKey === 'skillStone').length, 2);
+  assert.deepEqual(plan.generatedRows.skillStone.map(row => row.id), [2001, 2100]);
+  assert.equal(plan.changes.find(change => change.rowKey === 'npcMain').values.skill, '2001|2100');
+});

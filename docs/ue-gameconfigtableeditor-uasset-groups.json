@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "exportedAt": "2026-05-28T00:00:00+08:00",
+  "groups": [
+    {
+      "name": "UE GameConfigTableEditor uasset",
+      "files": [
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/CompositeStructs/A_Float.uasset",
+          "alias": "A_Float"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/CompositeStructs/A_Int.uasset",
+          "alias": "A_Int"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/CompositeStructs/A_RoleShowActionNode.uasset",
+          "alias": "A_RoleShowActionNode"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/CompositeStructs/A_TableWithIntKeyRowHandle.uasset",
+          "alias": "A_TableWithIntKeyRowHandle"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/CompositeStructs/A_TableWithStrKeyRowHandle.uasset",
+          "alias": "A_TableWithStrKeyRowHandle"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/CompositeStructs/K_GameSkillStone_V_A_Int.uasset",
+          "alias": "K_GameSkillStone_V_A_Int"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/CompositeStructs/K_Int_V_TableWithIntKeyRowHandle.uasset",
+          "alias": "K_Int_V_TableWithIntKeyRowHandle"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/CompositeStructs/K_Str_V_A_TableWithIntKeyRowHandle.uasset",
+          "alias": "K_Str_V_A_TableWithIntKeyRowHandle"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/fashion.uasset",
+          "alias": "fashion"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/fashion_compositor.uasset",
+          "alias": "fashion_compositor"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/fashion_header.uasset",
+          "alias": "fashion_header"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/fashion_rule.uasset",
+          "alias": "fashion_rule"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/fashion_rule_compositor.uasset",
+          "alias": "fashion_rule_compositor"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/fashion_rule_header.uasset",
+          "alias": "fashion_rule_header"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/in_game_download_path.uasset",
+          "alias": "in_game_download_path"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/in_game_download_path_compositor.uasset",
+          "alias": "in_game_download_path_compositor"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/in_game_download_path_header.uasset",
+          "alias": "in_game_download_path_header"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/level_effect_mpc.uasset",
+          "alias": "level_effect_mpc"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/level_effect_mpc_header.uasset",
+          "alias": "level_effect_mpc_header"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/LuaStructs/FashionNodeData.uasset",
+          "alias": "FashionNodeData"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/LuaStructs/RoleShowActionNode.uasset",
+          "alias": "RoleShowActionNode"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource.uasset",
+          "alias": "resource"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_anim_cfg_entry.uasset",
+          "alias": "resource_anim_cfg_entry"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_anim_cfg_entry_header.uasset",
+          "alias": "resource_anim_cfg_entry_header"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_anim_cfg_set.uasset",
+          "alias": "resource_anim_cfg_set"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_anim_cfg_set_header.uasset",
+          "alias": "resource_anim_cfg_set_header"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_anim_res.uasset",
+          "alias": "resource_anim_res"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_anim_res_header.uasset",
+          "alias": "resource_anim_res_header"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_fashion.uasset",
+          "alias": "resource_fashion"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_fashion_compositor.uasset",
+          "alias": "resource_fashion_compositor"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_header.uasset",
+          "alias": "resource_header"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_skeletal_mesh.uasset",
+          "alias": "resource_skeletal_mesh"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_skeletal_mesh_header.uasset",
+          "alias": "resource_skeletal_mesh_header"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_static_mesh.uasset",
+          "alias": "resource_static_mesh"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_static_mesh_header.uasset",
+          "alias": "resource_static_mesh_header"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_weapon.uasset",
+          "alias": "resource_weapon"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_weapon_fashion.uasset",
+          "alias": "resource_weapon_fashion"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_weapon_fashion_compositor.uasset",
+          "alias": "resource_weapon_fashion_compositor"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/resource_weapon_header.uasset",
+          "alias": "resource_weapon_header"
+        },
+        {
+          "relativePath": "frontend/trunk/Editor/UE_game/Content/BluePrint/GameConfigTableEditor/vfx_particle.uasset",
+          "alias": "vfx_particle"
+        }
+      ]
+    }
+  ]
+}

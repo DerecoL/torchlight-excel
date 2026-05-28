@@ -39,11 +39,19 @@
 
   function normalizeFieldSpec(spec) {
     if (!spec || typeof spec !== 'object') return { type: 'constant', value: spec };
-    const type = ['constant', 'input', 'inputOrId', 'id', 'ref', 'join'].includes(spec.type) ? spec.type : 'constant';
+    const type = ['constant', 'input', 'inputOrId', 'id', 'ref', 'refJoin', 'join'].includes(spec.type) ? spec.type : 'constant';
     if (type === 'input') return { type, key: spec.key || '' };
     if (type === 'inputOrId') return { type, key: spec.key || '', sequence: spec.sequence || '' };
     if (type === 'id') return { type, sequence: spec.sequence || '' };
     if (type === 'ref') return { type, row: spec.row || '', field: spec.field || '' };
+    if (type === 'refJoin') {
+      return {
+        type,
+        row: spec.row || '',
+        field: spec.field || '',
+        separator: spec.separator === undefined ? '' : String(spec.separator),
+      };
+    }
     if (type === 'join') {
       return {
         type,
@@ -98,6 +106,7 @@
     if (normalized.type === 'inputOrId') return { type: 'inputOrId', arg: normalized.key, arg2: normalized.sequence, constant: JSON.stringify(normalized) };
     if (normalized.type === 'id') return { type: 'id', arg: normalized.sequence, arg2: '', constant: '' };
     if (normalized.type === 'ref') return { type: 'ref', arg: normalized.row, arg2: normalized.field, constant: '' };
+    if (normalized.type === 'refJoin') return { type: 'refJoin', arg: normalized.row, arg2: normalized.field, constant: '', separator: normalized.separator };
     if (normalized.type === 'join') {
       return {
         type: 'join',
@@ -115,11 +124,19 @@
   }
 
   function visualSpecToFieldSpec(visual) {
-    const type = ['constant', 'input', 'inputOrId', 'id', 'ref', 'join'].includes(visual.type) ? visual.type : 'constant';
+    const type = ['constant', 'input', 'inputOrId', 'id', 'ref', 'refJoin', 'join'].includes(visual.type) ? visual.type : 'constant';
     if (type === 'input') return { type, key: String(visual.arg || '').trim() };
     if (type === 'inputOrId') return { type, key: String(visual.arg || '').trim(), sequence: String(visual.arg2 || '').trim() };
     if (type === 'id') return { type, sequence: String(visual.arg || '').trim() };
     if (type === 'ref') return { type, row: String(visual.arg || '').trim(), field: String(visual.arg2 || '').trim() };
+    if (type === 'refJoin') {
+      return {
+        type,
+        row: String(visual.arg || '').trim(),
+        field: String(visual.arg2 || '').trim(),
+        separator: visual.separator === undefined ? '' : String(visual.separator),
+      };
+    }
     if (type === 'join') {
       return {
         type,
@@ -162,7 +179,11 @@
       .sort((left, right) => left.index - right.index);
 
     if (skillItems.length < 2) {
-      return inputFields.map(field => ({ type: 'field', field }));
+      return inputFields.map(field => (
+        field && field.type === 'array'
+          ? { type: 'arrayGroup', field }
+          : { type: 'field', field }
+      ));
     }
 
     skillItems.forEach(item => {
@@ -181,8 +202,30 @@
         }
         return;
       }
+      if (field.type === 'array') {
+        output.push({ type: 'arrayGroup', field });
+        return;
+      }
       output.push({ type: 'field', field });
     });
+    return output;
+  }
+
+  function normalizeInputField(field) {
+    const type = ['text', 'number', 'select', 'boolean', 'array'].includes(field.type) ? field.type : 'text';
+    const output = {
+      key: field.key || '',
+      label: field.label || field.key || '',
+      type,
+      options: arrayFrom(field.options),
+    };
+    const visibleWhen = normalizeCondition(field.visibleWhen);
+    if (visibleWhen) output.visibleWhen = visibleWhen;
+    if (type === 'array') {
+      output.itemLabel = field.itemLabel || field.label || field.key || '项目';
+      output.minItems = Number.isFinite(Number(field.minItems)) ? Math.max(0, Number(field.minItems)) : 0;
+      output.fields = arrayFrom(field.fields).map(normalizeInputField).filter(child => child.type !== 'array');
+    }
     return output;
   }
 
@@ -195,14 +238,17 @@
     return output;
   }
 
+  function normalizeForEach(forEach) {
+    if (!forEach || !forEach.input) return null;
+    return {
+      input: String(forEach.input),
+      as: forEach.as ? String(forEach.as) : 'item',
+    };
+  }
+
   function normalizeTemplate(template) {
     const next = template && typeof template === 'object' ? template : {};
-    const inputs = arrayFrom(next.inputs).map(field => ({
-      key: field.key || '',
-      label: field.label || field.key || '',
-      type: ['text', 'number', 'select', 'boolean'].includes(field.type) ? field.type : 'text',
-      options: arrayFrom(field.options),
-    }));
+    const inputs = arrayFrom(next.inputs).map(normalizeInputField);
     const idSequences = arrayFrom(next.idSequences).map(sequence => ({
       key: sequence.key || '',
       label: sequence.label || sequence.key || '',
@@ -231,6 +277,7 @@
           return {
             key: row.key || '',
             condition: normalizeCondition(row.condition),
+            forEach: normalizeForEach(row.forEach),
             fields,
           };
         }),

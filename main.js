@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
 const { buildAutoConfigPlan, executeAutoConfigPlan } = require('./lib/auto-config-core');
+const { buildQuickEditPlan, readQuickEditRow } = require('./lib/quick-edit-core');
 const {
   readXlsxTable,
   writeXlsxChanges,
@@ -26,6 +27,7 @@ const DEFAULT_CONFIG = {
   favoriteWorkspaces: [],
   groups: [],
   autoConfigTemplates: [],
+  quickEditTemplates: [],
   _initialized: false
 };
 
@@ -753,6 +755,114 @@ ipcMain.handle('template:import', async (_event, filePath) => {
     return { ok: true, data: cloneData(saved) };
   } catch (e) {
     return { ok: false, error: '读取模板失败: ' + e.message };
+  }
+});
+
+// ── Quick Edit Templates / Execution ─────────────────────────────────────────
+
+function ensureQuickEditTemplateList() {
+  if (!Array.isArray(config.quickEditTemplates)) config.quickEditTemplates = [];
+}
+
+function normalizeQuickEditTemplateForSave(template) {
+  const next = { ...(template || {}) };
+  if (!next.id) next.id = `quick_${Date.now()}`;
+  if (!next.name) next.name = next.id;
+  next.relativePath = String(next.relativePath || '').trim();
+  next.sheetName = String(next.sheetName || 'data').trim();
+  next.headerRow = Number(next.headerRow || 2);
+  next.primaryKey = String(next.primaryKey || 'id').trim();
+  next.fields = Array.isArray(next.fields)
+    ? next.fields.map(field => String(field).trim()).filter(Boolean)
+    : [];
+  next.updatedAt = new Date().toISOString();
+  return next;
+}
+
+ipcMain.handle('quickEdit:templates', () => {
+  ensureQuickEditTemplateList();
+  return cloneData(config.quickEditTemplates);
+});
+
+ipcMain.handle('quickEdit:saveTemplate', (_event, template) => {
+  try {
+    ensureQuickEditTemplateList();
+    const next = normalizeQuickEditTemplateForSave(template);
+    const index = config.quickEditTemplates.findIndex(item => item.id === next.id);
+    if (index >= 0) config.quickEditTemplates[index] = next;
+    else config.quickEditTemplates.push(next);
+    const ok = saveConfig(config);
+    return { ok, data: cloneData(next) };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
+
+ipcMain.handle('quickEdit:deleteTemplate', (_event, templateId) => {
+  ensureQuickEditTemplateList();
+  config.quickEditTemplates = config.quickEditTemplates.filter(item => item.id !== templateId);
+  return { ok: saveConfig(config) };
+});
+
+async function buildQuickEditPlanForRequest(request) {
+  return await buildQuickEditPlan({
+    request,
+    tableReader: async (table, localPath) => await readXlsxTable(localPath, table),
+    resolveLocalPath: async (relativePath) => await resolveRelativePathToLocal(relativePath),
+  });
+}
+
+ipcMain.handle('quickEdit:loadRow', async (_event, request) => {
+  try {
+    return await readQuickEditRow({
+      request,
+      tableReader: async (table, localPath) => await readXlsxTable(localPath, table),
+      resolveLocalPath: async (relativePath) => await resolveRelativePathToLocal(relativePath),
+    });
+  } catch (e) {
+    return { ok: false, errors: [e.message], headers: [], row: null };
+  }
+});
+
+ipcMain.handle('quickEdit:preview', async (_event, request) => {
+  try {
+    return await buildQuickEditPlanForRequest(request || {});
+  } catch (e) {
+    return { ok: false, errors: [e.message], warnings: [], changes: [] };
+  }
+});
+
+ipcMain.handle('quickEdit:execute', async (_event, request) => {
+  try {
+    const plan = await buildQuickEditPlanForRequest(request || {});
+    if (!plan.ok) return plan;
+    if (!Array.isArray(plan.changes) || plan.changes.length === 0) {
+      return {
+        ok: true,
+        plan,
+        result: { ok: true, backups: [], writtenFiles: [], changeCount: 0, skipped: true },
+      };
+    }
+
+    const result = await executeAutoConfigPlan({
+      plan,
+      p4: {
+        sync: async (relativePath) => {
+          const syncResult = await p4SyncFile(relativePathToDepotPath(relativePath));
+          if (!syncResult.ok) throw new Error(syncResult.error);
+        },
+        edit: async (relativePath) => {
+          const editResult = await p4Edit(relativePathToDepotPath(relativePath));
+          if (!editResult.ok) throw new Error(editResult.error);
+        },
+      },
+      backupFile: async (localPath) => await createWorkbookBackup(localPath),
+      workbookWriter: async (localPath, changes) => await writeXlsxChanges(localPath, changes),
+    });
+
+    return { ok: true, plan, result };
+  } catch (e) {
+    return { ok: false, errors: [e.message], warnings: [], changes: [] };
   }
 });
 

@@ -12,6 +12,10 @@
   let autoTemplates = [];
   let activeAutoTemplateId = '';
   let runItems = [{}];
+  let quickEditTemplates = [];
+  let quickEditFile = null;
+  let quickEditHeaders = [];
+  let quickEditRow = null;
 
   // ── DOM References ─────────────────────────────────────────────
 
@@ -67,6 +71,25 @@
   const $btnPreviewAutoConfig = document.getElementById('btnPreviewAutoConfig');
   const $btnExecuteAutoConfig = document.getElementById('btnExecuteAutoConfig');
   const $autoPreviewOutput = document.getElementById('autoPreviewOutput');
+  const $modalQuickEdit = document.getElementById('modalQuickEdit');
+  const $quickEditPath = document.getElementById('quickEditPath');
+  const $quickEditTemplateSelect = document.getElementById('quickEditTemplateSelect');
+  const $quickEditTemplateName = document.getElementById('quickEditTemplateName');
+  const $quickEditSheetName = document.getElementById('quickEditSheetName');
+  const $quickEditHeaderRow = document.getElementById('quickEditHeaderRow');
+  const $quickEditPrimaryKey = document.getElementById('quickEditPrimaryKey');
+  const $quickEditPrimaryValue = document.getElementById('quickEditPrimaryValue');
+  const $quickEditFields = document.getElementById('quickEditFields');
+  const $quickEditJsonText = document.getElementById('quickEditJsonText');
+  const $quickEditFieldsList = document.getElementById('quickEditFieldsList');
+  const $quickEditPreview = document.getElementById('quickEditPreview');
+  const $btnQuickEditLoadJson = document.getElementById('btnQuickEditLoadJson');
+  const $btnQuickEditDumpJson = document.getElementById('btnQuickEditDumpJson');
+  const $btnQuickEditSaveTemplate = document.getElementById('btnQuickEditSaveTemplate');
+  const $btnQuickEditDeleteTemplate = document.getElementById('btnQuickEditDeleteTemplate');
+  const $btnQuickEditLoadRow = document.getElementById('btnQuickEditLoadRow');
+  const $btnQuickEditPreview = document.getElementById('btnQuickEditPreview');
+  const $btnQuickEditExecute = document.getElementById('btnQuickEditExecute');
 
   // Modals
   const $modalAddGroup = document.getElementById('modalAddGroup');
@@ -530,6 +553,9 @@
             <span class="spinner"></span>
             <span class="btn-open-text">仅查看</span>
           </button>
+          <button class="btn btn-quick-edit" data-file-index="${fileIndex}" title="按 ID 快速修改已有行">
+            <span class="btn-open-text">快速修改</span>
+          </button>
           <button class="btn-remove" data-file-index="${fileIndex}" title="移除收藏">✕</button>
         </div>
       `;
@@ -607,6 +633,13 @@
         removeFile(idx);
       });
     });
+
+    $fileList.querySelectorAll('.btn-quick-edit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.fileIndex);
+        openQuickEdit(idx);
+      });
+    });
   }
 
   async function syncAndOpenFile(fileIndex, btnEl, doCheckout = true) {
@@ -633,6 +666,232 @@
     } else {
       showToast('操作失败: ' + result.error, 'error', 5000);
     }
+  }
+
+  function parseQuickEditFields() {
+    return $quickEditFields.value
+      .split(',')
+      .map(field => field.trim())
+      .filter(Boolean);
+  }
+
+  function quickEditBaseRequest() {
+    return {
+      relativePath: quickEditFile ? quickEditFile.relativePath : $quickEditPath.value.trim(),
+      sheetName: $quickEditSheetName.value.trim(),
+      headerRow: Number($quickEditHeaderRow.value || 1),
+      primaryKey: $quickEditPrimaryKey.value.trim(),
+      primaryValue: $quickEditPrimaryValue.value.trim(),
+    };
+  }
+
+  function renderQuickEditTemplates(selectedId = '') {
+    $quickEditTemplateSelect.innerHTML = '<option value="">不使用模板</option>';
+    quickEditTemplates.forEach(template => {
+      const opt = document.createElement('option');
+      opt.value = template.id;
+      opt.textContent = template.name || template.id;
+      $quickEditTemplateSelect.appendChild(opt);
+    });
+    $quickEditTemplateSelect.value = selectedId;
+  }
+
+  async function reloadQuickEditTemplates(selectedId = '') {
+    quickEditTemplates = await window.quickEditApi.templates();
+    renderQuickEditTemplates(selectedId);
+  }
+
+  function applyQuickEditTemplate(template) {
+    if (!template) return;
+    $quickEditTemplateName.value = template.name || '';
+    $quickEditSheetName.value = template.sheetName || 'data';
+    $quickEditHeaderRow.value = template.headerRow || 2;
+    $quickEditPrimaryKey.value = template.primaryKey || 'id';
+    $quickEditFields.value = Array.isArray(template.fields) ? template.fields.join(',') : '';
+  }
+
+  async function openQuickEdit(fileIndex) {
+    const group = config.groups[activeGroupIndex];
+    if (!group || !group.files[fileIndex]) return;
+    quickEditFile = group.files[fileIndex];
+    quickEditHeaders = [];
+    quickEditRow = null;
+    $quickEditPath.value = quickEditFile.relativePath;
+    $quickEditPrimaryValue.value = '';
+    $quickEditJsonText.value = '';
+    $quickEditPreview.textContent = '';
+    $quickEditFieldsList.innerHTML = '<div class="quick-edit-empty">输入主键值后读取行。</div>';
+
+    await reloadQuickEditTemplates();
+    const matched = quickEditTemplates.find(template => template.relativePath === quickEditFile.relativePath);
+    if (matched) {
+      renderQuickEditTemplates(matched.id);
+      applyQuickEditTemplate(matched);
+    } else {
+      $quickEditTemplateName.value = getFileName(quickEditFile.relativePath).replace(/\.xlsx$/i, '') + ' 快速修改';
+      $quickEditSheetName.value = 'data';
+      $quickEditHeaderRow.value = 2;
+      $quickEditPrimaryKey.value = 'id';
+      $quickEditFields.value = '';
+    }
+    openModal($modalQuickEdit);
+  }
+
+  function renderQuickEditFields(headers, row) {
+    const selected = parseQuickEditFields();
+    const selectedSet = new Set(selected);
+    const primaryKey = $quickEditPrimaryKey.value.trim();
+    const editableHeaders = headers.filter(header => {
+      if (header === primaryKey) return false;
+      return selected.length === 0 || selectedSet.has(header);
+    });
+
+    if (editableHeaders.length === 0) {
+      $quickEditFieldsList.innerHTML = '<div class="quick-edit-empty">没有可编辑字段，请检查常用字段或表头。</div>';
+      return;
+    }
+
+    $quickEditFieldsList.innerHTML = editableHeaders.map(header => {
+      const value = row.values && row.values[header] !== undefined && row.values[header] !== null
+        ? row.values[header]
+        : '';
+      return `
+        <div class="quick-edit-field">
+          <div class="quick-edit-field-name">${escapeHtml(header)}</div>
+          <input class="input" data-quick-edit-field="${escapeHtml(header)}" data-original="${escapeHtml(String(value))}" value="${escapeHtml(String(value))}">
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function loadQuickEditRow() {
+    const result = await window.quickEditApi.loadRow(quickEditBaseRequest());
+    if (!result.ok) {
+      quickEditHeaders = [];
+      quickEditRow = null;
+      $quickEditFieldsList.innerHTML = '';
+      $quickEditPreview.textContent = (result.errors || []).join('\n');
+      showToast('读取行失败', 'error', 5000);
+      return result;
+    }
+    quickEditHeaders = result.headers || [];
+    quickEditRow = result.row;
+    renderQuickEditFields(quickEditHeaders, quickEditRow);
+    $quickEditPreview.textContent = `已读取第 ${quickEditRow.rowNumber} 行。`;
+    showToast('已读取目标行', 'success');
+    return result;
+  }
+
+  function coerceQuickEditValue(header, value) {
+    const before = quickEditRow && quickEditRow.values ? quickEditRow.values[header] : undefined;
+    if (typeof before === 'number' && value.trim() !== '') {
+      const numberValue = Number(value);
+      if (Number.isFinite(numberValue)) return numberValue;
+    }
+    return value;
+  }
+
+  function collectQuickEditRequest() {
+    const values = {};
+    $quickEditFieldsList.querySelectorAll('[data-quick-edit-field]').forEach(input => {
+      const header = input.dataset.quickEditField;
+      values[header] = coerceQuickEditValue(header, input.value);
+    });
+    return { ...quickEditBaseRequest(), values };
+  }
+
+  function applyQuickEditJsonRequest(request) {
+    quickEditFile = { ...(quickEditFile || {}), relativePath: request.relativePath };
+    $quickEditPath.value = request.relativePath;
+    $quickEditSheetName.value = request.sheetName;
+    $quickEditHeaderRow.value = request.headerRow;
+    $quickEditPrimaryKey.value = request.primaryKey;
+    $quickEditPrimaryValue.value = String(request.primaryValue);
+    $quickEditFields.value = Object.keys(request.values || {})
+      .filter(header => header !== request.primaryKey)
+      .join(',');
+  }
+
+  function applyQuickEditJsonValues(values) {
+    $quickEditFieldsList.querySelectorAll('[data-quick-edit-field]').forEach(input => {
+      const header = input.dataset.quickEditField;
+      if (Object.prototype.hasOwnProperty.call(values, header)) {
+        input.value = values[header] === undefined || values[header] === null ? '' : String(values[header]);
+      }
+    });
+  }
+
+  async function loadQuickEditJson() {
+    try {
+      const data = parseJsonText($quickEditJsonText.value, null, '快速修改 JSON');
+      const request = window.quickEditJson.normalizeQuickEditJsonRequest(data);
+      applyQuickEditJsonRequest(request);
+      const result = await loadQuickEditRow();
+      if (!result.ok) return result;
+      applyQuickEditJsonValues(request.values);
+      $quickEditPreview.textContent = '已导入快速修改 JSON，可预览变更后写入。';
+      showToast('快速修改 JSON 已导入', 'success');
+      return result;
+    } catch (e) {
+      showToast(e.message, 'error', 6000);
+      return { ok: false, errors: [e.message] };
+    }
+  }
+
+  function dumpQuickEditJson() {
+    $quickEditJsonText.value = formatJson(collectQuickEditRequest());
+    showToast('已从界面生成快速修改 JSON', 'success');
+  }
+
+  function summarizeQuickEditPlan(plan) {
+    if (!plan) return '';
+    const lines = [];
+    if (plan.errors && plan.errors.length > 0) {
+      lines.push('错误:');
+      plan.errors.forEach(error => lines.push(`- ${error}`));
+    }
+    if (plan.warnings && plan.warnings.length > 0) {
+      lines.push('警告:');
+      plan.warnings.forEach(warning => lines.push(`- ${warning}`));
+    }
+    lines.push(`变更数量: ${(plan.changes || []).length}`);
+    if (plan.ok && (!plan.changes || plan.changes.length === 0)) {
+      lines.push('没有字段变化，不会写入文件。');
+    }
+    (plan.changes || []).forEach(change => {
+      lines.push(`更新 ${change.relativePath} / ${change.sheetName} 第 ${change.rowNumber} 行，${change.primaryKey}=${change.primaryValue}`);
+      Object.entries(change.changes || {}).forEach(([header, diff]) => {
+        lines.push(`  ${header}: ${diff.before} -> ${diff.after}`);
+      });
+    });
+    return lines.join('\n');
+  }
+
+  async function previewQuickEdit() {
+    const plan = await window.quickEditApi.preview(collectQuickEditRequest());
+    $quickEditPreview.textContent = summarizeQuickEditPlan(plan);
+    if (plan.ok) showToast('快速修改预览已生成', 'success');
+    else showToast('快速修改预览失败', 'error', 5000);
+    return plan;
+  }
+
+  async function saveQuickEditTemplate() {
+    const template = {
+      id: $quickEditTemplateSelect.value || '',
+      name: $quickEditTemplateName.value.trim(),
+      relativePath: quickEditFile ? quickEditFile.relativePath : $quickEditPath.value.trim(),
+      sheetName: $quickEditSheetName.value.trim(),
+      headerRow: Number($quickEditHeaderRow.value || 1),
+      primaryKey: $quickEditPrimaryKey.value.trim(),
+      fields: parseQuickEditFields(),
+    };
+    const result = await window.quickEditApi.saveTemplate(template);
+    if (!result.ok) {
+      showToast('保存快速修改模板失败: ' + result.error, 'error', 5000);
+      return;
+    }
+    await reloadQuickEditTemplates(result.data.id);
+    showToast('快速修改模板已保存', 'success');
   }
 
   async function removeFile(fileIndex) {
@@ -1263,7 +1522,7 @@
           <div class="visual-grid">
             <div>
               <span class="visual-mini-label">值类型</span>
-              <select class="input visual-join-item-type">${optionTags(['constant', 'input', 'inputOrId', 'id', 'ref'], item.type)}</select>
+              <select class="input visual-join-item-type">${optionTags(['constant', 'input', 'inputOrId', 'id', 'ref', 'refJoin'], item.type)}</select>
             </div>
             ${visualInput('参数1（输入Key/ID序列/引用行）', 'visual-join-item-arg', item.arg)}
             ${visualInput('参数2（引用字段/ID序列）', 'visual-join-item-arg2', item.arg2)}
@@ -1311,7 +1570,7 @@
             ${visualInput('Excel 表头', 'visual-field-header', header)}
             <div>
               <span class="visual-mini-label">值类型</span>
-              <select class="input visual-field-type">${optionTags(['constant', 'input', 'inputOrId', 'id', 'ref', 'join'], visual.type)}</select>
+              <select class="input visual-field-type">${optionTags(['constant', 'input', 'inputOrId', 'id', 'ref', 'refJoin', 'join'], visual.type)}</select>
             </div>
             ${visualInput('参数1（输入Key/ID序列/引用行）', 'visual-field-arg', visual.arg)}
             ${visualInput('参数2（引用字段）', 'visual-field-arg2', visual.arg2)}
@@ -1433,6 +1692,7 @@
           }
           else if (type === 'id') fields[header] = { type, sequence: arg };
           else if (type === 'ref') fields[header] = { type, row: arg, field: arg2 };
+          else if (type === 'refJoin') fields[header] = { type, row: arg, field: arg2, separator: constant };
           else if (type === 'join') {
             const joinEditor = fieldCard.querySelector('.visual-join-editor');
             if (joinEditor) {
@@ -1602,7 +1862,7 @@
     return wrap;
   }
 
-  function createRunInputElement(field, value) {
+  function createBasicRunInputElement(field, value) {
     let input;
     if (field.type === 'select') {
       input = document.createElement('select');
@@ -1617,20 +1877,111 @@
       input.type = field.type === 'number' ? 'number' : (field.type === 'boolean' ? 'checkbox' : 'text');
     }
     input.className = 'input run-item-input';
-    input.dataset.runItemKey = field.key;
     if (field.type === 'boolean') input.checked = value === true;
     else if (value !== undefined && value !== null) input.value = value;
     return input;
   }
 
+  function createRunInputElement(field, value) {
+    const input = createBasicRunInputElement(field, value);
+    input.dataset.runItemKey = field.key;
+    return input;
+  }
+
+  function createRunArrayInputElement(arrayKey, index, field, value) {
+    const input = createBasicRunInputElement(field, value);
+    input.dataset.runArrayKey = arrayKey;
+    input.dataset.runArrayIndex = String(index);
+    input.dataset.runArrayFieldKey = field.key;
+    return input;
+  }
+
+  function attachVisibleWhen(element, field) {
+    if (field && field.visibleWhen) {
+      element.dataset.visibleWhen = JSON.stringify(field.visibleWhen);
+    }
+  }
+
   function renderRunField(fieldList, field, item) {
     const fieldWrap = document.createElement('div');
     fieldWrap.className = 'run-item-field';
+    attachVisibleWhen(fieldWrap, field);
     const label = document.createElement('label');
     label.textContent = field.label || field.key;
     fieldWrap.appendChild(label);
     fieldWrap.appendChild(createRunInputElement(field, item && item[field.key]));
     fieldList.appendChild(fieldWrap);
+  }
+
+  function renderRunArrayGroup(fieldList, group, item) {
+    const field = group.field;
+    const groupWrap = document.createElement('div');
+    groupWrap.className = 'run-array-group';
+    groupWrap.dataset.arrayKey = field.key;
+    attachVisibleWhen(groupWrap, field);
+
+    const header = document.createElement('div');
+    header.className = 'run-array-group-header';
+    const title = document.createElement('div');
+    title.className = 'run-array-group-title';
+    title.textContent = field.label || field.key;
+    header.appendChild(title);
+    const addButton = document.createElement('button');
+    addButton.type = 'button';
+    addButton.className = 'btn btn-sm';
+    addButton.dataset.runArrayAction = 'add';
+    addButton.dataset.arrayKey = field.key;
+    addButton.textContent = '+';
+    addButton.title = `新增${field.itemLabel || field.label || '项目'}`;
+    header.appendChild(addButton);
+    groupWrap.appendChild(header);
+
+    const rows = document.createElement('div');
+    rows.className = 'run-array-rows';
+    const rawItems = Array.isArray(item && item[field.key]) ? item[field.key] : [];
+    const minItems = Number.isFinite(Number(field.minItems)) ? Number(field.minItems) : 0;
+    const arrayItems = rawItems.length > 0 ? rawItems : Array.from({ length: minItems }, () => ({}));
+    arrayItems.forEach((arrayItem, arrayIndex) => {
+      const row = document.createElement('div');
+      row.className = 'run-array-row';
+      row.dataset.arrayKey = field.key;
+      row.dataset.arrayIndex = String(arrayIndex);
+
+      const rowHeader = document.createElement('div');
+      rowHeader.className = 'run-array-row-header';
+      const rowTitle = document.createElement('div');
+      rowTitle.className = 'run-array-row-title';
+      rowTitle.textContent = `${field.itemLabel || field.label || '项目'} ${arrayIndex + 1}`;
+      rowHeader.appendChild(rowTitle);
+      const removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.className = 'btn btn-sm run-item-remove';
+      removeButton.dataset.runArrayAction = 'remove';
+      removeButton.dataset.arrayKey = field.key;
+      removeButton.dataset.arrayIndex = String(arrayIndex);
+      removeButton.textContent = '×';
+      removeButton.title = '删除这一项';
+      removeButton.disabled = arrayItems.length <= minItems;
+      rowHeader.appendChild(removeButton);
+      row.appendChild(rowHeader);
+
+      const fields = document.createElement('div');
+      fields.className = 'run-array-row-fields';
+      (field.fields || []).forEach(childField => {
+        const childWrap = document.createElement('div');
+        childWrap.className = 'run-item-field';
+        const label = document.createElement('label');
+        label.textContent = childField.label || childField.key;
+        childWrap.appendChild(label);
+        childWrap.appendChild(createRunArrayInputElement(field.key, arrayIndex, childField, arrayItem && arrayItem[childField.key]));
+        fields.appendChild(childWrap);
+      });
+      row.appendChild(fields);
+      rows.appendChild(row);
+    });
+
+    groupWrap.appendChild(rows);
+    fieldList.appendChild(groupWrap);
   }
 
   function renderRunSkillGroup(fieldList, group, item) {
@@ -1731,6 +2082,7 @@
 
       window.templateVisualUtils.groupRunInputFields(fields).forEach(group => {
         if (group.type === 'skillGroup') renderRunSkillGroup(fieldList, group, item);
+        else if (group.type === 'arrayGroup') renderRunArrayGroup(fieldList, group, item);
         else renderRunField(fieldList, group.field, item);
       });
 
@@ -1739,6 +2091,7 @@
     });
 
     $runItemsTable.appendChild(list);
+    updateRunVisibility();
   }
 
   function renderRunFields(prefill = {}) {
@@ -1763,6 +2116,45 @@
     });
   }
 
+  function valueForCondition(input) {
+    if (!input) return undefined;
+    if (input.type === 'checkbox') return input.checked;
+    if (input.type === 'number') return input.value === '' ? '' : Number(input.value);
+    return input.value;
+  }
+
+  function collectTopLevelRunValues(row) {
+    const values = {};
+    row.querySelectorAll('[data-run-item-key]').forEach(input => {
+      values[input.dataset.runItemKey] = valueForCondition(input);
+    });
+    return values;
+  }
+
+  function conditionMatches(condition, values) {
+    if (!condition || !condition.input) return true;
+    const actual = values[condition.input];
+    if (condition.op === 'in') {
+      return Array.isArray(condition.values) && condition.values.some(value => String(value) === String(actual));
+    }
+    return String(actual) === String(condition.value);
+  }
+
+  function updateRunVisibility() {
+    $runItemsTable.querySelectorAll('.run-item-card').forEach(row => {
+      const values = collectTopLevelRunValues(row);
+      row.querySelectorAll('[data-visible-when]').forEach(element => {
+        let visible = true;
+        try {
+          visible = conditionMatches(JSON.parse(element.dataset.visibleWhen), values);
+        } catch (_) {
+          visible = true;
+        }
+        element.classList.toggle('hidden', !visible);
+      });
+    });
+  }
+
   function collectRunRequest() {
     const templateId = $runTemplateSelect.value || activeAutoTemplateId;
     const idStarts = {};
@@ -1782,6 +2174,21 @@
         if (input.type === 'checkbox') item[input.dataset.runItemKey] = input.checked;
         else if (input.type === 'number') item[input.dataset.runItemKey] = input.value === '' ? '' : Number(input.value);
         else item[input.dataset.runItemKey] = input.value;
+      });
+      row.querySelectorAll('.run-array-group[data-array-key]').forEach(group => {
+        const arrayKey = group.dataset.arrayKey;
+        const arrayItems = [];
+        group.querySelectorAll('.run-array-row').forEach(arrayRow => {
+          const arrayItem = {};
+          arrayRow.querySelectorAll('[data-run-array-field-key]').forEach(input => {
+            const fieldKey = input.dataset.runArrayFieldKey;
+            if (input.type === 'checkbox') arrayItem[fieldKey] = input.checked;
+            else if (input.type === 'number') arrayItem[fieldKey] = input.value === '' ? '' : Number(input.value);
+            else arrayItem[fieldKey] = input.value;
+          });
+          arrayItems.push(arrayItem);
+        });
+        item[arrayKey] = arrayItems;
       });
       return item;
     });
@@ -2088,6 +2495,23 @@
   });
 
   $runItemsTable.addEventListener('click', (event) => {
+    const arrayButton = event.target.closest('[data-run-array-action]');
+    if (arrayButton) {
+      const items = collectRunItemsFromDom();
+      const row = arrayButton.closest('.run-item-row');
+      const itemIndex = Number(row && row.dataset.index);
+      const arrayKey = arrayButton.dataset.arrayKey;
+      if (!Number.isFinite(itemIndex) || !arrayKey || !items[itemIndex]) return;
+      if (!Array.isArray(items[itemIndex][arrayKey])) items[itemIndex][arrayKey] = [];
+      if (arrayButton.dataset.runArrayAction === 'add') {
+        items[itemIndex][arrayKey].push({});
+      } else if (arrayButton.dataset.runArrayAction === 'remove') {
+        items[itemIndex][arrayKey].splice(Number(arrayButton.dataset.arrayIndex), 1);
+      }
+      renderRunItems(items);
+      return;
+    }
+
     const button = event.target.closest('[data-run-item-action="remove"]');
     if (!button) return;
     const items = collectRunItemsFromDom();
@@ -2095,6 +2519,9 @@
     items.splice(Number(button.dataset.index), 1);
     renderRunItems(items);
   });
+
+  $runItemsTable.addEventListener('input', updateRunVisibility);
+  $runItemsTable.addEventListener('change', updateRunVisibility);
 
   $btnLoadRunJson.addEventListener('click', () => {
     try {
@@ -2133,6 +2560,58 @@
     } else {
       $autoPreviewOutput.textContent = summarizePlan(result);
       showToast('写入失败，请检查输出', 'error', 6000);
+    }
+  });
+
+  $quickEditTemplateSelect.addEventListener('change', () => {
+    const template = quickEditTemplates.find(item => item.id === $quickEditTemplateSelect.value);
+    applyQuickEditTemplate(template);
+    if (quickEditRow) renderQuickEditFields(quickEditHeaders, quickEditRow);
+  });
+
+  $quickEditFields.addEventListener('change', () => {
+    if (quickEditRow) renderQuickEditFields(quickEditHeaders, quickEditRow);
+  });
+
+  $btnQuickEditSaveTemplate.addEventListener('click', saveQuickEditTemplate);
+  $btnQuickEditLoadJson.addEventListener('click', loadQuickEditJson);
+  $btnQuickEditDumpJson.addEventListener('click', dumpQuickEditJson);
+
+  $btnQuickEditDeleteTemplate.addEventListener('click', async () => {
+    const templateId = $quickEditTemplateSelect.value;
+    if (!templateId) {
+      showToast('请先选择要删除的快速修改模板', 'error');
+      return;
+    }
+    if (!confirm('确定删除这个快速修改模板吗？')) return;
+    const result = await window.quickEditApi.deleteTemplate(templateId);
+    if (!result.ok) {
+      showToast('删除快速修改模板失败', 'error', 5000);
+      return;
+    }
+    await reloadQuickEditTemplates();
+    showToast('快速修改模板已删除', 'success');
+  });
+
+  $btnQuickEditLoadRow.addEventListener('click', loadQuickEditRow);
+  $btnQuickEditPreview.addEventListener('click', previewQuickEdit);
+
+  $btnQuickEditExecute.addEventListener('click', async () => {
+    const preview = await previewQuickEdit();
+    if (!preview.ok) return;
+    if (!preview.changes || preview.changes.length === 0) {
+      showToast('没有字段变化，不需要写入', 'info', 5000);
+      return;
+    }
+    if (!confirm(`即将 checkout 并写入 ${(preview.changes || []).length} 项变更，确认继续？`)) return;
+    const result = await window.quickEditApi.execute(collectQuickEditRequest());
+    if (result.ok) {
+      $quickEditPreview.textContent = summarizeQuickEditPlan(result.plan) +
+        `\n\n写入完成\n备份:\n${(result.result.backups || []).map(b => `- ${b.backupPath}`).join('\n')}`;
+      showToast('快速修改已写入，提交前请在 P4V 中审核', 'success', 6000);
+    } else {
+      $quickEditPreview.textContent = summarizeQuickEditPlan(result);
+      showToast('快速修改写入失败', 'error', 6000);
     }
   });
 

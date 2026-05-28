@@ -324,6 +324,76 @@ test('normalizeTemplate preserves inputOrId field specs', () => {
   });
 });
 
+test('normalizeTemplate preserves array inputs and visible conditions', () => {
+  const { normalizeTemplate, groupRunInputFields } = loadUtils();
+
+  const output = normalizeTemplate({
+    id: 'npc',
+    name: 'NPC',
+    inputs: [
+      { key: 'enter_scene_type', label: '入场方式', type: 'select', options: ['0', '1'] },
+      {
+        key: 'appear_skill_id',
+        label: '出场技能行为 ID',
+        type: 'number',
+        visibleWhen: { input: 'enter_scene_type', op: 'equals', value: '1' },
+      },
+      {
+        key: 'skills',
+        label: '技能配置',
+        type: 'array',
+        itemLabel: '技能',
+        minItems: 1,
+        fields: [
+          { key: 'skill_stone_id', label: '技能石 ID', type: 'number' },
+          { key: 'skill_id', label: '技能行为 ID', type: 'number' },
+        ],
+      },
+    ],
+  });
+
+  assert.deepEqual(output.inputs[1].visibleWhen, { input: 'enter_scene_type', op: 'equals', value: '1' });
+  assert.deepEqual(output.inputs[2], {
+    key: 'skills',
+    label: '技能配置',
+    type: 'array',
+    options: [],
+    itemLabel: '技能',
+    minItems: 1,
+    fields: [
+      { key: 'skill_stone_id', label: '技能石 ID', type: 'number', options: [] },
+      { key: 'skill_id', label: '技能行为 ID', type: 'number', options: [] },
+    ],
+  });
+
+  assert.deepEqual(groupRunInputFields(output.inputs)[2], { type: 'arrayGroup', field: output.inputs[2] });
+});
+
+test('normalizeTemplate preserves repeated row rules', () => {
+  const { normalizeTemplate } = loadUtils();
+
+  const output = normalizeTemplate({
+    id: 'npc',
+    name: 'NPC',
+    tables: [
+      {
+        key: 'skill_stone',
+        rows: [
+          {
+            key: 'skillStone',
+            forEach: { input: 'skills', as: 'skill' },
+            fields: {
+              id: { type: 'inputOrId', key: 'skill.skill_stone_id', sequence: 'skillStoneId' },
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.deepEqual(output.tables[0].rows[0].forEach, { input: 'skills', as: 'skill' });
+});
+
 test('extractTemplateFromImport reads the first template from a full export document', () => {
   const { extractTemplateFromImport } = loadUtils();
 

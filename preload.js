@@ -43,3 +43,12 @@ contextBridge.exposeInMainWorld('autoConfigApi', {
   preview: (runRequest) => ipcRenderer.invoke('autoConfig:preview', runRequest),
   execute: (runRequest) => ipcRenderer.invoke('autoConfig:execute', runRequest)
 });
+
+contextBridge.exposeInMainWorld('quickEditApi', {
+  templates: () => ipcRenderer.invoke('quickEdit:templates'),
+  saveTemplate: (template) => ipcRenderer.invoke('quickEdit:saveTemplate', template),
+  deleteTemplate: (templateId) => ipcRenderer.invoke('quickEdit:deleteTemplate', templateId),
+  loadRow: (request) => ipcRenderer.invoke('quickEdit:loadRow', request),
+  preview: (request) => ipcRenderer.invoke('quickEdit:preview', request),
+  execute: (request) => ipcRenderer.invoke('quickEdit:execute', request)
+});

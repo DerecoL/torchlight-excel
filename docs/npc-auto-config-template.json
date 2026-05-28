@@ -1,0 +1,471 @@
+{
+  "version": 1,
+  "exportedAt": "2026-05-28T00:00:00.000Z",
+  "templates": [
+    {
+      "id": "npc-auto-config",
+      "name": "NPC 自动配表",
+      "inputs": [
+        {
+          "key": "name",
+          "label": "名称",
+          "type": "text",
+          "options": []
+        },
+        {
+          "key": "note",
+          "label": "备注",
+          "type": "text",
+          "options": []
+        },
+        {
+          "key": "resource_id",
+          "label": "资源 ID",
+          "type": "number",
+          "options": []
+        },
+        {
+          "key": "res_material_set_id",
+          "label": "材质组 ID",
+          "type": "number",
+          "options": []
+        },
+        {
+          "key": "radius",
+          "label": "半径",
+          "type": "number",
+          "options": []
+        },
+        {
+          "key": "type",
+          "label": "类型",
+          "type": "select",
+          "options": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        },
+        {
+          "key": "move_speed",
+          "label": "移动速度",
+          "type": "number",
+          "options": []
+        },
+        {
+          "key": "AIConfigID",
+          "label": "AI 配置 ID",
+          "type": "number",
+          "options": []
+        },
+        {
+          "key": "enter_scene_type",
+          "label": "入场方式",
+          "type": "select",
+          "options": [
+            "0",
+            "1"
+          ]
+        },
+        {
+          "key": "appear_skill_stone_id",
+          "label": "出场技能石 ID（留空自动新增）",
+          "type": "number",
+          "options": [],
+          "visibleWhen": {
+            "input": "enter_scene_type",
+            "op": "equals",
+            "value": "1"
+          }
+        },
+        {
+          "key": "appear_skill_name",
+          "label": "出场技能名",
+          "type": "text",
+          "options": [],
+          "visibleWhen": {
+            "input": "enter_scene_type",
+            "op": "equals",
+            "value": "1"
+          }
+        },
+        {
+          "key": "appear_skill_stone_type",
+          "label": "出场技能石类型",
+          "type": "number",
+          "options": [],
+          "visibleWhen": {
+            "input": "enter_scene_type",
+            "op": "equals",
+            "value": "1"
+          }
+        },
+        {
+          "key": "appear_skill_id",
+          "label": "出场技能行为 ID",
+          "type": "number",
+          "options": [],
+          "visibleWhen": {
+            "input": "enter_scene_type",
+            "op": "equals",
+            "value": "1"
+          }
+        },
+        {
+          "key": "skills",
+          "label": "技能石配置",
+          "type": "array",
+          "options": [],
+          "itemLabel": "技能",
+          "minItems": 1,
+          "fields": [
+            {
+              "key": "skill_stone_id",
+              "label": "技能石 ID（留空自动新增）",
+              "type": "number",
+              "options": []
+            },
+            {
+              "key": "skill_stone_type",
+              "label": "技能石类型",
+              "type": "number",
+              "options": []
+            },
+            {
+              "key": "skill_id",
+              "label": "技能行为 ID",
+              "type": "number",
+              "options": []
+            }
+          ]
+        },
+        {
+          "key": "has_minimap_icon",
+          "label": "新增小地图图标",
+          "type": "boolean",
+          "options": []
+        },
+        {
+          "key": "map_icon_id",
+          "label": "小地图图标 ID（留空自动新增）",
+          "type": "number",
+          "options": [],
+          "visibleWhen": {
+            "input": "has_minimap_icon",
+            "op": "equals",
+            "value": true
+          }
+        },
+        {
+          "key": "map_icon_enum",
+          "label": "图标类型",
+          "type": "text",
+          "options": [],
+          "visibleWhen": {
+            "input": "has_minimap_icon",
+            "op": "equals",
+            "value": true
+          }
+        },
+        {
+          "key": "map_icon_des",
+          "label": "图标描述",
+          "type": "text",
+          "options": [],
+          "visibleWhen": {
+            "input": "has_minimap_icon",
+            "op": "equals",
+            "value": true
+          }
+        },
+        {
+          "key": "map_icon_res",
+          "label": "图标资源",
+          "type": "text",
+          "options": [],
+          "visibleWhen": {
+            "input": "has_minimap_icon",
+            "op": "equals",
+            "value": true
+          }
+        },
+        {
+          "key": "map_icon_zorder",
+          "label": "图标层级",
+          "type": "number",
+          "options": [],
+          "visibleWhen": {
+            "input": "has_minimap_icon",
+            "op": "equals",
+            "value": true
+          }
+        },
+        {
+          "key": "map_icon_show_in_filter",
+          "label": "过滤器显示",
+          "type": "number",
+          "options": [],
+          "visibleWhen": {
+            "input": "has_minimap_icon",
+            "op": "equals",
+            "value": true
+          }
+        }
+      ],
+      "idSequences": [
+        {
+          "key": "npcId",
+          "label": "npc.id"
+        },
+        {
+          "key": "npcAttrId",
+          "label": "npc_attr.id"
+        },
+        {
+          "key": "skillStoneId",
+          "label": "skill_stone.id"
+        },
+        {
+          "key": "mapIconId",
+          "label": "map_icon.id"
+        }
+      ],
+      "tables": [
+        {
+          "key": "npc_attr",
+          "relativePath": "design/demo_table/npc_attr.xlsx",
+          "sheetName": "data",
+          "headerRow": 2,
+          "primaryKey": "id",
+          "copyRow": 3,
+          "rows": [
+            {
+              "key": "npcAttrMain",
+              "condition": null,
+              "fields": {
+                "id": {
+                  "type": "id",
+                  "sequence": "npcAttrId"
+                },
+                "name": {
+                  "type": "input",
+                  "key": "name"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "key": "skill_stone",
+          "relativePath": "design/demo_table/skill_stone.xlsx",
+          "sheetName": "data",
+          "headerRow": 2,
+          "primaryKey": "id",
+          "copyRow": 3,
+          "rows": [
+            {
+              "key": "skillStone",
+              "condition": null,
+              "forEach": {
+                "input": "skills",
+                "as": "skill"
+              },
+              "fields": {
+                "id": {
+                  "type": "inputOrId",
+                  "key": "skill.skill_stone_id",
+                  "sequence": "skillStoneId"
+                },
+                "name": {
+                  "type": "input",
+                  "key": "name"
+                },
+                "type": {
+                  "type": "input",
+                  "key": "skill.skill_stone_type"
+                },
+                "skill_id": {
+                  "type": "input",
+                  "key": "skill.skill_id"
+                }
+              }
+            },
+            {
+              "key": "appearSkillStone",
+              "condition": {
+                "input": "enter_scene_type",
+                "op": "equals",
+                "value": "1"
+              },
+              "fields": {
+                "id": {
+                  "type": "inputOrId",
+                  "key": "appear_skill_stone_id",
+                  "sequence": "skillStoneId"
+                },
+                "name": {
+                  "type": "input",
+                  "key": "appear_skill_name"
+                },
+                "type": {
+                  "type": "input",
+                  "key": "appear_skill_stone_type"
+                },
+                "skill_id": {
+                  "type": "input",
+                  "key": "appear_skill_id"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "key": "map_icon",
+          "relativePath": "design/demo_table/map_icon.xlsx",
+          "sheetName": "data",
+          "headerRow": 2,
+          "primaryKey": "id",
+          "copyRow": 3,
+          "rows": [
+            {
+              "key": "mapIconMain",
+              "condition": {
+                "input": "has_minimap_icon",
+                "op": "equals",
+                "value": true
+              },
+              "fields": {
+                "id": {
+                  "type": "inputOrId",
+                  "key": "map_icon_id",
+                  "sequence": "mapIconId"
+                },
+                "enum": {
+                  "type": "input",
+                  "key": "map_icon_enum"
+                },
+                "des": {
+                  "type": "input",
+                  "key": "map_icon_des"
+                },
+                "res": {
+                  "type": "input",
+                  "key": "map_icon_res"
+                },
+                "zorder": {
+                  "type": "input",
+                  "key": "map_icon_zorder"
+                },
+                "show_in_filter": {
+                  "type": "input",
+                  "key": "map_icon_show_in_filter"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "key": "npc",
+          "relativePath": "design/demo_table/npc.xlsx",
+          "sheetName": "data",
+          "headerRow": 2,
+          "primaryKey": "id",
+          "copyRow": 3,
+          "rows": [
+            {
+              "key": "npcMain",
+              "condition": null,
+              "fields": {
+                "id": {
+                  "type": "id",
+                  "sequence": "npcId"
+                },
+                "name": {
+                  "type": "input",
+                  "key": "name"
+                },
+                "note": {
+                  "type": "input",
+                  "key": "note"
+                },
+                "resource_id": {
+                  "type": "input",
+                  "key": "resource_id"
+                },
+                "res_material_set_id": {
+                  "type": "input",
+                  "key": "res_material_set_id"
+                },
+                "radius": {
+                  "type": "input",
+                  "key": "radius"
+                },
+                "type": {
+                  "type": "input",
+                  "key": "type"
+                },
+                "move_speed": {
+                  "type": "input",
+                  "key": "move_speed"
+                },
+                "skill": {
+                  "type": "refJoin",
+                  "row": "skillStone",
+                  "field": "id",
+                  "separator": "|"
+                },
+                "AIConfigID": {
+                  "type": "input",
+                  "key": "AIConfigID"
+                },
+                "npc_attr_id": {
+                  "type": "ref",
+                  "row": "npcAttrMain",
+                  "field": "id"
+                },
+                "enter_scene_type": {
+                  "type": "input",
+                  "key": "enter_scene_type"
+                },
+                "appear_skill_stone_id": {
+                  "type": "join",
+                  "separator": "",
+                  "items": [
+                    {
+                      "type": "ref",
+                      "row": "appearSkillStone",
+                      "field": "id",
+                      "condition": {
+                        "input": "enter_scene_type",
+                        "op": "equals",
+                        "value": "1"
+                      }
+                    }
+                  ]
+                },
+                "minimap_icon_id": {
+                  "type": "join",
+                  "separator": "",
+                  "items": [
+                    {
+                      "type": "ref",
+                      "row": "mapIconMain",
+                      "field": "id",
+                      "condition": {
+                        "input": "has_minimap_icon",
+                        "op": "equals",
+                        "value": true
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

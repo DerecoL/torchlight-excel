@@ -667,6 +667,53 @@ body {
   padding: 10px;
 }
 
+.run-array-group {
+  grid-column: 1 / -1;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  padding: 10px;
+}
+
+.run-array-group-header,
+.run-array-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.run-array-group-header {
+  margin-bottom: 8px;
+}
+
+.run-array-group-title,
+.run-array-row-title {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.run-array-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.run-array-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  padding: 8px;
+}
+
+.run-array-row-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .run-skill-group-title {
   color: var(--text-secondary);
   font-size: 12px;
@@ -972,6 +1019,17 @@ body {
   width: 520px;
 }
 
+.modal-xl {
+  width: 760px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-xl .modal-body {
+  overflow-y: auto;
+}
+
 .modal-header {
   display: flex;
   align-items: center;
@@ -1203,4 +1261,45 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: right;
+}
+
+.quick-edit-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.quick-edit-fields {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.quick-edit-field {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+}
+
+.quick-edit-field-name {
+  color: var(--text-secondary);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-edit-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.quick-edit-preview {
+  margin-top: 12px;
 }
