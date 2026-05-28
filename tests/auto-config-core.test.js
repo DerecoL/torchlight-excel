@@ -390,3 +390,230 @@ test('buildAutoConfigPlan warns when provided inputs are not mapped to any field
   assert.equal(plan.ok, true);
   assert.match(plan.warnings.join('\n'), /输入字段未映射到任何 Excel 列: name, resource_id/);
 });
+
+test('buildAutoConfigPlan reports missing headers with row and available header context', async () => {
+  const plan = await buildAutoConfigPlan({
+    template: {
+      id: 'npc',
+      name: 'NPC配置',
+      inputs: [{ key: 'skill_ids_pipe', label: '技能列表', type: 'text' }],
+      idSequences: [{ key: 'npcId', label: 'NPC ID' }],
+      tables: [
+        {
+          key: 'npc',
+          relativePath: 'design/demo_table/npc.xlsx',
+          sheetName: 'data',
+          headerRow: 2,
+          primaryKey: 'id',
+          rows: [
+            {
+              key: 'npcMain',
+              fields: {
+                id: { type: 'id', sequence: 'npcId' },
+                skill_ids_pipe: { type: 'input', key: 'skill_ids_pipe' },
+              },
+            },
+          ],
+        },
+      ],
+    },
+    runRequest: {
+      templateId: 'npc',
+      inputs: { skill_ids_pipe: '1000000' },
+      idStarts: { npcId: 10000001 },
+    },
+    tableReader: async () => ({
+      headers: ['id', 'name', 'skill', 'npc_attr_id'],
+      existingRows: [],
+      nextRowNumber: 3,
+      columnValues: {},
+    }),
+    resolveLocalPath: async relativePath => `C:/ws/${relativePath}`,
+  });
+
+  assert.equal(plan.ok, false);
+  assert.match(plan.errors.join('\n'), /行规则 npcMain/);
+  assert.match(plan.errors.join('\n'), /缺少字段表头: skill_ids_pipe/);
+  assert.match(plan.errors.join('\n'), /可用表头: id, name, skill, npc_attr_id/);
+});
+
+test('buildAutoConfigPlan joins enabled skill inputs into npc skill field', async () => {
+  const plan = await buildAutoConfigPlan({
+    template: {
+      id: 'npc-skill-join',
+      name: 'NPC技能拼接',
+      inputs: [
+        { key: 'skill1_id', label: '技能1', type: 'number' },
+        { key: 'has_skill_2', label: '是否技能2', type: 'boolean' },
+        { key: 'skill2_id', label: '技能2', type: 'number' },
+        { key: 'has_skill_3', label: '是否技能3', type: 'boolean' },
+        { key: 'skill3_id', label: '技能3', type: 'number' },
+        { key: 'has_skill_4', label: '是否技能4', type: 'boolean' },
+        { key: 'skill4_id', label: '技能4', type: 'number' },
+        { key: 'has_skill_5', label: '是否技能5', type: 'boolean' },
+        { key: 'skill5_id', label: '技能5', type: 'number' },
+      ],
+      idSequences: [{ key: 'npcId', label: 'NPC ID' }],
+      tables: [
+        {
+          key: 'npc',
+          relativePath: 'design/demo_table/npc.xlsx',
+          sheetName: 'data',
+          headerRow: 2,
+          primaryKey: 'id',
+          rows: [
+            {
+              key: 'npcMain',
+              fields: {
+                id: { type: 'id', sequence: 'npcId' },
+                skill: {
+                  type: 'join',
+                  separator: '|',
+                  items: [
+                    { type: 'input', key: 'skill1_id' },
+                    { type: 'input', key: 'skill2_id', condition: { input: 'has_skill_2', op: 'equals', value: true } },
+                    { type: 'input', key: 'skill3_id', condition: { input: 'has_skill_3', op: 'equals', value: true } },
+                    { type: 'input', key: 'skill4_id', condition: { input: 'has_skill_4', op: 'equals', value: true } },
+                    { type: 'input', key: 'skill5_id', condition: { input: 'has_skill_5', op: 'equals', value: true } },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      ],
+    },
+    runRequest: {
+      templateId: 'npc-skill-join',
+      inputs: {
+        skill1_id: 1000000,
+        has_skill_2: true,
+        skill2_id: 1000001,
+        has_skill_3: true,
+        skill3_id: 1000002,
+        has_skill_4: true,
+        skill4_id: 1000003,
+        has_skill_5: false,
+        skill5_id: '',
+      },
+      idStarts: { npcId: 10000001 },
+    },
+    tableReader: async () => ({
+      headers: ['id', 'skill'],
+      existingRows: [],
+      nextRowNumber: 3,
+      columnValues: {},
+    }),
+    resolveLocalPath: async relativePath => `C:/ws/${relativePath}`,
+  });
+
+  assert.equal(plan.ok, true);
+  assert.equal(plan.errors.length, 0);
+  assert.equal(plan.warnings.length, 0);
+  assert.equal(plan.changes[0].values.skill, '1000000|1000001|1000002|1000003');
+});
+
+test('buildAutoConfigPlan auto-generates blank skillstone ids and writes them into npc skill', async () => {
+  const plan = await buildAutoConfigPlan({
+    template: {
+      id: 'npc-skill-auto-ids',
+      name: 'NPC skill auto ids',
+      inputs: [
+        { key: 'skill1_id', label: 'skill 1', type: 'number' },
+        { key: 'has_skill_2', label: 'has skill 2', type: 'boolean' },
+        { key: 'skill2_id', label: 'skill 2', type: 'number' },
+        { key: 'has_skill_3', label: 'has skill 3', type: 'boolean' },
+        { key: 'skill3_id', label: 'skill 3', type: 'number' },
+      ],
+      idSequences: [
+        { key: 'npcId', label: 'npc.id' },
+        { key: 'skillstoneId', label: 'skill_stone.id' },
+      ],
+      tables: [
+        {
+          key: 'skillstone',
+          relativePath: 'design/demo_table/skill_stone.xlsx',
+          sheetName: 'data',
+          headerRow: 2,
+          primaryKey: 'id',
+          rows: [
+            {
+              key: 'skillstone1',
+              fields: {
+                id: { type: 'inputOrId', key: 'skill1_id', sequence: 'skillstoneId' },
+              },
+            },
+            {
+              key: 'skillstone2',
+              condition: { input: 'has_skill_2', op: 'equals', value: true },
+              fields: {
+                id: { type: 'inputOrId', key: 'skill2_id', sequence: 'skillstoneId' },
+              },
+            },
+            {
+              key: 'skillstone3',
+              condition: { input: 'has_skill_3', op: 'equals', value: true },
+              fields: {
+                id: { type: 'inputOrId', key: 'skill3_id', sequence: 'skillstoneId' },
+              },
+            },
+          ],
+        },
+        {
+          key: 'npc',
+          relativePath: 'design/demo_table/npc.xlsx',
+          sheetName: 'data',
+          headerRow: 2,
+          primaryKey: 'id',
+          rows: [
+            {
+              key: 'npcMain',
+              fields: {
+                id: { type: 'id', sequence: 'npcId' },
+                skill: {
+                  type: 'join',
+                  separator: '|',
+                  items: [
+                    { type: 'ref', row: 'skillstone1', field: 'id' },
+                    { type: 'ref', row: 'skillstone2', field: 'id', condition: { input: 'has_skill_2', op: 'equals', value: true } },
+                    { type: 'ref', row: 'skillstone3', field: 'id', condition: { input: 'has_skill_3', op: 'equals', value: true } },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      ],
+    },
+    runRequest: {
+      templateId: 'npc-skill-auto-ids',
+      inputs: {
+        skill1_id: '',
+        has_skill_2: true,
+        skill2_id: '',
+        has_skill_3: false,
+        skill3_id: '',
+      },
+      idStarts: { npcId: 10000001 },
+    },
+    tableReader: async (table) => ({
+      headers: table.key === 'skillstone' ? ['id'] : ['id', 'skill'],
+      existingRows: table.key === 'skillstone'
+        ? [
+          { rowNumber: 2, values: { id: 2000 } },
+          { rowNumber: 3, values: { id: 'ignored' } },
+        ]
+        : [],
+      nextRowNumber: table.key === 'skillstone' ? 4 : 3,
+      columnValues: table.key === 'skillstone' ? { id: [2000, 'ignored'] } : {},
+    }),
+    resolveLocalPath: async relativePath => `C:/ws/${relativePath}`,
+  });
+
+  assert.equal(plan.ok, true);
+  assert.equal(plan.errors.length, 0);
+  assert.equal(plan.warnings.length, 0);
+  assert.equal(plan.changes.find(change => change.rowKey === 'skillstone1').values.id, 2001);
+  assert.equal(plan.changes.find(change => change.rowKey === 'skillstone2').values.id, 2002);
+  assert.equal(plan.changes.find(change => change.rowKey === 'npcMain').values.skill, '2001|2002');
+});

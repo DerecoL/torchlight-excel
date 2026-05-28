@@ -56,7 +56,7 @@ npm start
     {
       "name": "怪物配置",
       "files": [
-        { "relativePath": "Design/Tables/Monster.xlsx", "alias": "怪物属性表" }
+        { "relativePath": "design/demo_table/npc.xlsx", "alias": "怪物配置表" }
       ]
     }
   ]

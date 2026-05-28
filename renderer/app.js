@@ -1043,29 +1043,28 @@
       id: `template-${Date.now()}`,
       name: '新自动配表模板',
       inputs: [
-        { key: 'type', label: '类型', type: 'select', options: ['monster'] },
         { key: 'name', label: '名称', type: 'text' },
-        { key: 'level', label: '等级', type: 'number' }
+        { key: 'skill_ids_pipe', label: '技能列表', type: 'text' }
       ],
       idSequences: [
-        { key: 'mainId', label: '主表ID' }
+        { key: 'npcId', label: 'npc.id' }
       ],
       tables: [
         {
-          key: 'main',
-          relativePath: 'Design/Tables/Example.xlsx',
-          sheetName: 'Sheet1',
-          headerRow: 1,
-          primaryKey: 'ID',
-          copyRow: 2,
+          key: 'npc',
+          relativePath: 'design/demo_table/npc.xlsx',
+          sheetName: 'data',
+          headerRow: 2,
+          primaryKey: 'id',
+          copyRow: 3,
           rows: [
             {
-              key: 'mainRow',
-              condition: { input: 'type', op: 'equals', value: 'monster' },
+              key: 'npcMain',
+              condition: null,
               fields: {
-                ID: { type: 'id', sequence: 'mainId' },
-                Name: { type: 'input', key: 'name' },
-                Level: { type: 'input', key: 'level' }
+                id: { type: 'id', sequence: 'npcId' },
+                name: { type: 'input', key: 'name' },
+                skill: { type: 'input', key: 'skill_ids_pipe' }
               }
             }
           ]
@@ -1248,15 +1247,50 @@
   }
 
   function fieldSpecToVisual(spec) {
-    const normalized = window.templateVisualUtils.normalizeTemplate({
-      id: 'tmp',
-      name: 'tmp',
-      tables: [{ rows: [{ fields: { Field: spec } }] }]
-    }).tables[0].rows[0].fields.Field;
-    if (normalized.type === 'input') return { type: 'input', arg: normalized.key, arg2: '', constant: '' };
-    if (normalized.type === 'id') return { type: 'id', arg: normalized.sequence, arg2: '', constant: '' };
-    if (normalized.type === 'ref') return { type: 'ref', arg: normalized.row, arg2: normalized.field, constant: '' };
-    return { type: 'constant', arg: '', arg2: '', constant: normalized.value };
+    return window.templateVisualUtils.fieldSpecToVisualSpec(spec);
+  }
+
+  function renderVisualJoinItems(visual, tableIndex, rowIndex, fieldIndex) {
+    const items = visual && Array.isArray(visual.items) ? visual.items : [];
+    const safeItems = Array.isArray(items) ? items : [];
+    const body = safeItems.length
+      ? safeItems.map((item, itemIndex) => `
+        <div class="visual-join-item" data-join-item-index="${itemIndex}">
+          <div class="visual-card-header compact">
+            <span class="visual-card-title">拼接项 ${itemIndex + 1}</span>
+            <button class="btn btn-danger btn-sm" data-visual-action="remove-join-item" data-table-index="${tableIndex}" data-row-index="${rowIndex}" data-field-index="${fieldIndex}" data-item-index="${itemIndex}">×</button>
+          </div>
+          <div class="visual-grid">
+            <div>
+              <span class="visual-mini-label">值类型</span>
+              <select class="input visual-join-item-type">${optionTags(['constant', 'input', 'inputOrId', 'id', 'ref'], item.type)}</select>
+            </div>
+            ${visualInput('参数1（输入Key/ID序列/引用行）', 'visual-join-item-arg', item.arg)}
+            ${visualInput('参数2（引用字段/ID序列）', 'visual-join-item-arg2', item.arg2)}
+            ${visualInput('常量值', 'visual-join-item-constant', item.constant)}
+          </div>
+          <div class="visual-grid three visual-join-condition">
+            ${visualInput('条件输入 Key', 'visual-join-condition-input', item.conditionInput)}
+            <div>
+              <span class="visual-mini-label">条件</span>
+              <select class="input visual-join-condition-op">${optionTags(['equals', 'in'], item.conditionOp || 'equals')}</select>
+            </div>
+            ${visualInput('条件值（in 用逗号分隔）', 'visual-join-condition-value', item.conditionValue)}
+          </div>
+        </div>`).join('')
+      : '<div class="visual-empty">暂无拼接项</div>';
+    return `
+      <div class="visual-join-editor">
+        <div class="visual-grid two">
+          ${visualInput('分隔符', 'visual-join-separator', visual.separator || '|')}
+        </div>
+        <div class="visual-join-items">
+          ${body}
+        </div>
+        <div class="visual-row-actions">
+          <button class="btn btn-sm" data-visual-action="add-join-item" data-table-index="${tableIndex}" data-row-index="${rowIndex}" data-field-index="${fieldIndex}">+ 拼接项</button>
+        </div>
+      </div>`;
   }
 
   function renderVisualFields(fields, tableIndex, rowIndex) {
@@ -1264,6 +1298,9 @@
     if (!entries.length) return '<div class="visual-empty">暂无字段映射</div>';
     return entries.map(([header, spec], fieldIndex) => {
       const visual = fieldSpecToVisual(spec);
+      const joinEditor = visual.type === 'join'
+        ? renderVisualJoinItems(visual, tableIndex, rowIndex, fieldIndex)
+        : '';
       return `
         <div class="visual-card visual-field-card">
           <div class="visual-card-header">
@@ -1274,7 +1311,7 @@
             ${visualInput('Excel 表头', 'visual-field-header', header)}
             <div>
               <span class="visual-mini-label">值类型</span>
-              <select class="input visual-field-type">${optionTags(['constant', 'input', 'id', 'ref'], visual.type)}</select>
+              <select class="input visual-field-type">${optionTags(['constant', 'input', 'inputOrId', 'id', 'ref', 'join'], visual.type)}</select>
             </div>
             ${visualInput('参数1（输入Key/ID序列/引用行）', 'visual-field-arg', visual.arg)}
             ${visualInput('参数2（引用字段）', 'visual-field-arg2', visual.arg2)}
@@ -1282,6 +1319,7 @@
           <div class="visual-grid two" style="margin-top: 8px;">
             ${visualInput('常量值', 'visual-field-constant', visual.constant)}
           </div>
+          ${joinEditor}
         </div>`;
     }).join('');
   }
@@ -1388,8 +1426,36 @@
           const constant = fieldCard.querySelector('.visual-field-constant').value;
           if (!header) return;
           if (type === 'input') fields[header] = { type, key: arg };
+          else if (type === 'inputOrId') {
+            fields[header] = constant.trim()
+              ? parseJsonText(constant, { type, key: arg, sequence: arg2 }, `字段 ${header} inputOrId JSON`)
+              : { type, key: arg, sequence: arg2 };
+          }
           else if (type === 'id') fields[header] = { type, sequence: arg };
           else if (type === 'ref') fields[header] = { type, row: arg, field: arg2 };
+          else if (type === 'join') {
+            const joinEditor = fieldCard.querySelector('.visual-join-editor');
+            if (joinEditor) {
+              const items = [...joinEditor.querySelectorAll('.visual-join-item')].map(itemCard => ({
+                type: itemCard.querySelector('.visual-join-item-type').value,
+                arg: itemCard.querySelector('.visual-join-item-arg').value.trim(),
+                arg2: itemCard.querySelector('.visual-join-item-arg2').value.trim(),
+                constant: itemCard.querySelector('.visual-join-item-constant').value,
+                conditionInput: itemCard.querySelector('.visual-join-condition-input').value.trim(),
+                conditionOp: itemCard.querySelector('.visual-join-condition-op').value,
+                conditionValue: itemCard.querySelector('.visual-join-condition-value').value
+              }));
+              fields[header] = window.templateVisualUtils.visualSpecToFieldSpec({
+                type: 'join',
+                separator: joinEditor.querySelector('.visual-join-separator').value,
+                items
+              });
+            } else {
+              fields[header] = constant.trim().startsWith('{')
+                ? parseJsonText(constant, { type: 'join', separator: '|', items: [] }, `字段 ${header} join JSON`)
+                : { type: 'join', separator: '|', items: [] };
+            }
+          }
           else fields[header] = { type: 'constant', value: constant };
         });
 
@@ -1557,6 +1623,62 @@
     return input;
   }
 
+  function renderRunField(fieldList, field, item) {
+    const fieldWrap = document.createElement('div');
+    fieldWrap.className = 'run-item-field';
+    const label = document.createElement('label');
+    label.textContent = field.label || field.key;
+    fieldWrap.appendChild(label);
+    fieldWrap.appendChild(createRunInputElement(field, item && item[field.key]));
+    fieldList.appendChild(fieldWrap);
+  }
+
+  function renderRunSkillGroup(fieldList, group, item) {
+    const groupWrap = document.createElement('div');
+    groupWrap.className = 'run-skill-group';
+
+    const title = document.createElement('div');
+    title.className = 'run-skill-group-title';
+    title.textContent = group.title || '技能配置';
+    groupWrap.appendChild(title);
+
+    const rows = document.createElement('div');
+    rows.className = 'run-skill-rows';
+
+    group.items.forEach(skillItem => {
+      const row = document.createElement('div');
+      row.className = 'run-skill-row';
+
+      const toggle = document.createElement('label');
+      toggle.className = 'run-skill-toggle';
+      if (skillItem.enabledField) {
+        toggle.appendChild(createRunInputElement(skillItem.enabledField, item && item[skillItem.enabledField.key]));
+        const toggleText = document.createElement('span');
+        toggleText.textContent = '启用';
+        toggle.appendChild(toggleText);
+      } else {
+        const fixedText = document.createElement('span');
+        fixedText.className = 'run-skill-required';
+        fixedText.textContent = '默认';
+        toggle.appendChild(fixedText);
+      }
+      row.appendChild(toggle);
+
+      const valueWrap = document.createElement('div');
+      valueWrap.className = 'run-skill-value';
+      const label = document.createElement('label');
+      label.textContent = `技能${skillItem.index} skillstone.id`;
+      valueWrap.appendChild(label);
+      valueWrap.appendChild(createRunInputElement(skillItem.valueField, item && item[skillItem.valueField.key]));
+      row.appendChild(valueWrap);
+
+      rows.appendChild(row);
+    });
+
+    groupWrap.appendChild(rows);
+    fieldList.appendChild(groupWrap);
+  }
+
   function normalizeRunItemsForUi(prefill = {}) {
     if (Array.isArray(prefill.items)) return prefill.items.length > 0 ? prefill.items : [{}];
     if (prefill.inputs && typeof prefill.inputs === 'object') return [prefill.inputs];
@@ -1578,34 +1700,21 @@
       return;
     }
 
-    const grid = document.createElement('div');
-    grid.className = 'run-items-grid';
-    grid.style.gridTemplateColumns = `repeat(${fields.length}, minmax(120px, 1fr)) 42px`;
-
-    fields.forEach(field => {
-      const header = document.createElement('div');
-      header.className = 'run-item-header';
-      header.textContent = field.label || field.key;
-      grid.appendChild(header);
-    });
-    const actionHeader = document.createElement('div');
-    actionHeader.className = 'run-item-header';
-    grid.appendChild(actionHeader);
+    const list = document.createElement('div');
+    list.className = 'run-items-list';
 
     runItems.forEach((item, itemIndex) => {
-      const row = document.createElement('div');
-      row.className = 'run-item-row';
-      row.dataset.index = String(itemIndex);
+      const card = document.createElement('div');
+      card.className = 'run-item-row run-item-card';
+      card.dataset.index = String(itemIndex);
 
-      fields.forEach(field => {
-        const cell = document.createElement('div');
-        cell.className = 'run-item-cell';
-        cell.appendChild(createRunInputElement(field, item && item[field.key]));
-        row.appendChild(cell);
-      });
+      const header = document.createElement('div');
+      header.className = 'run-item-card-header';
+      const title = document.createElement('div');
+      title.className = 'run-item-card-title';
+      title.textContent = `数据行 ${itemIndex + 1}`;
+      header.appendChild(title);
 
-      const actionCell = document.createElement('div');
-      actionCell.className = 'run-item-cell run-item-action-cell';
       const removeButton = document.createElement('button');
       removeButton.type = 'button';
       removeButton.className = 'btn btn-sm run-item-remove';
@@ -1614,13 +1723,22 @@
       removeButton.textContent = '×';
       removeButton.title = '删除这一行';
       removeButton.disabled = runItems.length <= 1;
-      actionCell.appendChild(removeButton);
-      row.appendChild(actionCell);
+      header.appendChild(removeButton);
+      card.appendChild(header);
 
-      grid.appendChild(row);
+      const fieldList = document.createElement('div');
+      fieldList.className = 'run-item-fields';
+
+      window.templateVisualUtils.groupRunInputFields(fields).forEach(group => {
+        if (group.type === 'skillGroup') renderRunSkillGroup(fieldList, group, item);
+        else renderRunField(fieldList, group.field, item);
+      });
+
+      card.appendChild(fieldList);
+      list.appendChild(card);
     });
 
-    $runItemsTable.appendChild(grid);
+    $runItemsTable.appendChild(list);
   }
 
   function renderRunFields(prefill = {}) {
@@ -1805,6 +1923,19 @@
     list.addEventListener('change', syncJsonFromVisual);
   });
 
+  $visualTablesList.addEventListener('change', (event) => {
+    if (!event.target.closest('.visual-field-type')) return;
+    try {
+      const template = syncJsonFromVisual();
+      renderVisualTemplateEditor(template);
+      $templateInputsText.value = formatJson(template.inputs);
+      $templateIdsText.value = formatJson(template.idSequences);
+      $templateTablesText.value = formatJson(template.tables);
+    } catch (e) {
+      showToast(e.message, 'error', 6000);
+    }
+  });
+
   $visualTablesList.addEventListener('click', (event) => {
     const button = event.target.closest('[data-visual-action]');
     if (!button) return;
@@ -1840,10 +1971,7 @@
             fields: {
               [primaryKey]: sequence
                 ? { type: 'id', sequence }
-                : { type: 'constant', value: '' },
-              ...Object.fromEntries((template.inputs || [])
-                .filter(input => input.key && input.key !== primaryKey)
-                .map(input => [input.key, { type: 'input', key: input.key }]))
+                : { type: 'constant', value: '' }
             }
           });
         }
@@ -1872,6 +2000,30 @@
         if (row) {
           const header = Object.keys(row.fields || {})[Number(button.dataset.fieldIndex)];
           if (header) delete row.fields[header];
+        }
+      } else if (action === 'add-join-item') {
+        const table = template.tables[Number(button.dataset.tableIndex)];
+        const row = table && table.rows[Number(button.dataset.rowIndex)];
+        if (row) {
+          const header = Object.keys(row.fields || {})[Number(button.dataset.fieldIndex)];
+          if (header) {
+            const field = row.fields[header] && row.fields[header].type === 'join'
+              ? row.fields[header]
+              : { type: 'join', separator: '|', items: [] };
+            field.items = Array.isArray(field.items) ? field.items : [];
+            field.items.push({ type: 'ref', row: '', field: '' });
+            row.fields[header] = field;
+          }
+        }
+      } else if (action === 'remove-join-item') {
+        const table = template.tables[Number(button.dataset.tableIndex)];
+        const row = table && table.rows[Number(button.dataset.rowIndex)];
+        if (row) {
+          const header = Object.keys(row.fields || {})[Number(button.dataset.fieldIndex)];
+          const field = header && row.fields[header];
+          if (field && field.type === 'join' && Array.isArray(field.items)) {
+            field.items.splice(Number(button.dataset.itemIndex), 1);
+          }
         }
       }
     });

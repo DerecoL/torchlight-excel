@@ -39,11 +39,151 @@
 
   function normalizeFieldSpec(spec) {
     if (!spec || typeof spec !== 'object') return { type: 'constant', value: spec };
-    const type = ['constant', 'input', 'id', 'ref'].includes(spec.type) ? spec.type : 'constant';
+    const type = ['constant', 'input', 'inputOrId', 'id', 'ref', 'join'].includes(spec.type) ? spec.type : 'constant';
     if (type === 'input') return { type, key: spec.key || '' };
+    if (type === 'inputOrId') return { type, key: spec.key || '', sequence: spec.sequence || '' };
     if (type === 'id') return { type, sequence: spec.sequence || '' };
     if (type === 'ref') return { type, row: spec.row || '', field: spec.field || '' };
+    if (type === 'join') {
+      return {
+        type,
+        separator: spec.separator === undefined ? '' : String(spec.separator),
+        items: arrayFrom(spec.items).map(item => {
+          const normalized = normalizeFieldSpec(item);
+          if (item && typeof item === 'object' && item.condition) {
+            normalized.condition = normalizeCondition(item.condition);
+          }
+          return normalized;
+        }),
+      };
+    }
     return { type, value: spec.value === undefined ? '' : spec.value };
+  }
+
+  function conditionToVisual(condition) {
+    const normalized = normalizeCondition(condition);
+    if (!normalized) {
+      return {
+        conditionInput: '',
+        conditionOp: 'equals',
+        conditionValue: '',
+      };
+    }
+    return {
+      conditionInput: normalized.input,
+      conditionOp: normalized.op,
+      conditionValue: normalized.op === 'in' ? normalized.values.join(',') : normalized.value,
+    };
+  }
+
+  function valueFromVisual(value) {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value === undefined ? '' : value;
+  }
+
+  function conditionFromVisual(visual) {
+    const input = String(visual.conditionInput || '').trim();
+    if (!input) return null;
+    const op = visual.conditionOp === 'in' ? 'in' : 'equals';
+    if (op === 'in') {
+      return { input, op, values: arrayFrom(visual.conditionValue) };
+    }
+    return { input, op, value: valueFromVisual(visual.conditionValue) };
+  }
+
+  function fieldSpecToVisualSpec(spec) {
+    const normalized = normalizeFieldSpec(spec);
+    if (normalized.type === 'input') return { type: 'input', arg: normalized.key, arg2: '', constant: '' };
+    if (normalized.type === 'inputOrId') return { type: 'inputOrId', arg: normalized.key, arg2: normalized.sequence, constant: JSON.stringify(normalized) };
+    if (normalized.type === 'id') return { type: 'id', arg: normalized.sequence, arg2: '', constant: '' };
+    if (normalized.type === 'ref') return { type: 'ref', arg: normalized.row, arg2: normalized.field, constant: '' };
+    if (normalized.type === 'join') {
+      return {
+        type: 'join',
+        arg: '',
+        arg2: '',
+        constant: '',
+        separator: normalized.separator,
+        items: normalized.items.map(item => ({
+          ...fieldSpecToVisualSpec(item),
+          ...conditionToVisual(item.condition),
+        })),
+      };
+    }
+    return { type: 'constant', arg: '', arg2: '', constant: normalized.value };
+  }
+
+  function visualSpecToFieldSpec(visual) {
+    const type = ['constant', 'input', 'inputOrId', 'id', 'ref', 'join'].includes(visual.type) ? visual.type : 'constant';
+    if (type === 'input') return { type, key: String(visual.arg || '').trim() };
+    if (type === 'inputOrId') return { type, key: String(visual.arg || '').trim(), sequence: String(visual.arg2 || '').trim() };
+    if (type === 'id') return { type, sequence: String(visual.arg || '').trim() };
+    if (type === 'ref') return { type, row: String(visual.arg || '').trim(), field: String(visual.arg2 || '').trim() };
+    if (type === 'join') {
+      return {
+        type,
+        separator: visual.separator === undefined ? '' : String(visual.separator),
+        items: arrayFrom(visual.items).map(item => {
+          const spec = visualSpecToFieldSpec(item);
+          const condition = conditionFromVisual(item);
+          if (condition) spec.condition = condition;
+          return spec;
+        }),
+      };
+    }
+    return { type: 'constant', value: visual.constant === undefined ? '' : visual.constant };
+  }
+
+  function groupRunInputFields(fields) {
+    const inputFields = arrayFrom(fields);
+    const skillFields = new Map();
+    const used = new Set();
+
+    inputFields.forEach(field => {
+      if (!field || !field.key) return;
+      const skillMatch = String(field.key).match(/^skill(\d+)_id$/i);
+      if (skillMatch) {
+        const index = Number(skillMatch[1]);
+        if (!skillFields.has(index)) skillFields.set(index, { index, enabledField: null, valueField: null });
+        skillFields.get(index).valueField = field;
+        return;
+      }
+      const enabledMatch = String(field.key).match(/^has_skill_(\d+)$/i);
+      if (enabledMatch) {
+        const index = Number(enabledMatch[1]);
+        if (!skillFields.has(index)) skillFields.set(index, { index, enabledField: null, valueField: null });
+        skillFields.get(index).enabledField = field;
+      }
+    });
+
+    const skillItems = [...skillFields.values()]
+      .filter(item => item.valueField)
+      .sort((left, right) => left.index - right.index);
+
+    if (skillItems.length < 2) {
+      return inputFields.map(field => ({ type: 'field', field }));
+    }
+
+    skillItems.forEach(item => {
+      used.add(item.valueField.key);
+      if (item.enabledField) used.add(item.enabledField.key);
+    });
+
+    const output = [];
+    let insertedSkillGroup = false;
+    inputFields.forEach(field => {
+      if (!field || !field.key) return;
+      if (used.has(field.key)) {
+        if (!insertedSkillGroup) {
+          output.push({ type: 'skillGroup', title: '技能配置', items: skillItems });
+          insertedSkillGroup = true;
+        }
+        return;
+      }
+      output.push({ type: 'field', field });
+    });
+    return output;
   }
 
   function normalizeFields(fields) {
@@ -83,14 +223,10 @@
         rows: arrayFrom(table.rows).map(row => {
           const fields = normalizeFields(row.fields);
           const fieldKeys = Object.keys(fields);
-          const onlyPrimaryKey = fieldKeys.length === 1 && table.primaryKey && fieldKeys[0] === table.primaryKey;
-          if ((fieldKeys.length === 0 || onlyPrimaryKey) && table.primaryKey) {
+          if (fieldKeys.length === 0 && table.primaryKey) {
             fields[table.primaryKey] = defaultSequence
               ? { type: 'id', sequence: defaultSequence.key }
               : { type: 'constant', value: '' };
-            for (const input of inputs) {
-              if (input.key && !fields[input.key]) fields[input.key] = { type: 'input', key: input.key };
-            }
           }
           return {
             key: row.key || '',
@@ -144,5 +280,8 @@
     normalizeTemplate,
     extractTemplateFromImport,
     cloneTemplate,
+    fieldSpecToVisualSpec,
+    visualSpecToFieldSpec,
+    groupRunInputFields,
   };
 });

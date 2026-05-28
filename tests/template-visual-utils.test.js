@@ -89,7 +89,7 @@ test('normalizeTemplate repairs empty row rules with the primary key id sequence
   });
 });
 
-test('normalizeTemplate maps same-key inputs when repairing an empty row rule', () => {
+test('normalizeTemplate does not invent input mappings when repairing an empty row rule', () => {
   const { normalizeTemplate } = loadUtils();
 
   const output = normalizeTemplate({
@@ -114,12 +114,10 @@ test('normalizeTemplate maps same-key inputs when repairing an empty row rule', 
 
   assert.deepEqual(output.tables[0].rows[0].fields, {
     id: { type: 'id', sequence: 'mainId' },
-    name: { type: 'input', key: 'name' },
-    resource_id: { type: 'input', key: 'resource_id' },
   });
 });
 
-test('normalizeTemplate maps same-key inputs when a row only has the primary key', () => {
+test('normalizeTemplate preserves primary-key-only row rules without adding inputs', () => {
   const { normalizeTemplate } = loadUtils();
 
   const output = normalizeTemplate({
@@ -151,8 +149,178 @@ test('normalizeTemplate maps same-key inputs when a row only has the primary key
 
   assert.deepEqual(output.tables[0].rows[0].fields, {
     id: { type: 'id', sequence: 'mainId' },
-    name: { type: 'input', key: 'name' },
-    note: { type: 'input', key: 'note' },
+  });
+});
+
+test('normalizeTemplate preserves join field specs', () => {
+  const { normalizeTemplate } = loadUtils();
+
+  const output = normalizeTemplate({
+    id: 'npc',
+    name: 'NPC',
+    tables: [
+      {
+        key: 'npc',
+        rows: [
+          {
+            key: 'npc',
+            fields: {
+              skill: {
+                type: 'join',
+                separator: '|',
+                items: [
+                  { type: 'input', key: 'skill1_id' },
+                  { type: 'input', key: 'skill2_id', condition: { input: 'has_skill_2', op: 'equals', value: true } },
+                ],
+              },
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.deepEqual(output.tables[0].rows[0].fields.skill, {
+    type: 'join',
+    separator: '|',
+    items: [
+      { type: 'input', key: 'skill1_id' },
+      { type: 'input', key: 'skill2_id', condition: { input: 'has_skill_2', op: 'equals', value: true } },
+    ],
+  });
+});
+
+test('fieldSpecToVisualSpec expands join items for hierarchical editing', () => {
+  const { fieldSpecToVisualSpec } = loadUtils();
+
+  const output = fieldSpecToVisualSpec({
+    type: 'join',
+    separator: '|',
+    items: [
+      { type: 'ref', row: 'skillstone1', field: 'id' },
+      {
+        type: 'input',
+        key: 'skill2_id',
+        condition: { input: 'has_skill_2', op: 'equals', value: true },
+      },
+    ],
+  });
+
+  assert.deepEqual(output, {
+    type: 'join',
+    arg: '',
+    arg2: '',
+    constant: '',
+    separator: '|',
+    items: [
+      {
+        type: 'ref',
+        arg: 'skillstone1',
+        arg2: 'id',
+        constant: '',
+        conditionInput: '',
+        conditionOp: 'equals',
+        conditionValue: '',
+      },
+      {
+        type: 'input',
+        arg: 'skill2_id',
+        arg2: '',
+        constant: '',
+        conditionInput: 'has_skill_2',
+        conditionOp: 'equals',
+        conditionValue: true,
+      },
+    ],
+  });
+});
+
+test('visualSpecToFieldSpec serializes hierarchical join items', () => {
+  const { visualSpecToFieldSpec } = loadUtils();
+
+  const output = visualSpecToFieldSpec({
+    type: 'join',
+    separator: '|',
+    items: [
+      {
+        type: 'ref',
+        arg: 'skillstone1',
+        arg2: 'id',
+        constant: '',
+        conditionInput: '',
+        conditionOp: 'equals',
+        conditionValue: '',
+      },
+      {
+        type: 'input',
+        arg: 'skill2_id',
+        arg2: '',
+        constant: '',
+        conditionInput: 'has_skill_2',
+        conditionOp: 'equals',
+        conditionValue: 'true',
+      },
+    ],
+  });
+
+  assert.deepEqual(output, {
+    type: 'join',
+    separator: '|',
+    items: [
+      { type: 'ref', row: 'skillstone1', field: 'id' },
+      {
+        type: 'input',
+        key: 'skill2_id',
+        condition: { input: 'has_skill_2', op: 'equals', value: true },
+      },
+    ],
+  });
+});
+
+test('groupRunInputFields groups numbered skill inputs for the run UI', () => {
+  const { groupRunInputFields } = loadUtils();
+
+  const skill1 = { key: 'skill1_id', label: 'Skill 1 ID', type: 'number' };
+  const hasSkill2 = { key: 'has_skill_2', label: 'Has Skill 2', type: 'boolean' };
+  const skill2 = { key: 'skill2_id', label: 'Skill 2 ID', type: 'number' };
+  const name = { key: 'name', label: 'Name', type: 'text' };
+
+  const output = groupRunInputFields([skill1, hasSkill2, skill2, name]);
+
+  assert.equal(output.length, 2);
+  assert.equal(output[0].type, 'skillGroup');
+  assert.deepEqual(output[0].items, [
+    { index: 1, enabledField: null, valueField: skill1 },
+    { index: 2, enabledField: hasSkill2, valueField: skill2 },
+  ]);
+  assert.deepEqual(output[1], { type: 'field', field: name });
+});
+
+test('normalizeTemplate preserves inputOrId field specs', () => {
+  const { normalizeTemplate } = loadUtils();
+
+  const output = normalizeTemplate({
+    id: 'npc',
+    name: 'NPC',
+    tables: [
+      {
+        key: 'skillstone',
+        rows: [
+          {
+            key: 'skillstone1',
+            fields: {
+              id: { type: 'inputOrId', key: 'skill1_id', sequence: 'skillstoneId' },
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.deepEqual(output.tables[0].rows[0].fields.id, {
+    type: 'inputOrId',
+    key: 'skill1_id',
+    sequence: 'skillstoneId',
   });
 });
 
